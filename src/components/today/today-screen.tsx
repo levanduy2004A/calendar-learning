@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check, ChevronRight } from "lucide-react";
+import { CalendarDays, Check, ChevronRight } from "lucide-react";
 import { CtaButton } from "@/components/cta-button";
 import { SubjectGlyph } from "@/components/subject-icon";
 import { DaypartGlyph, KindTag, Pill } from "@/components/ui-bits";
@@ -12,6 +12,7 @@ import {
   completedIdsOn,
   enabledDayparts,
   firstActionable,
+  hasAssignedSubjects,
   isDaypartEnabled,
   previewPlan,
 } from "@/lib/planner";
@@ -38,14 +39,68 @@ export function TodayScreen() {
   const today = vnToday();
   const date = params.get("date") || today;
   const nowPart = currentDaypart();
+  const assigned = hasAssignedSubjects(state, date);
   const plan = previewPlan(state, date);
   const done = completedIdsOn(state.completions, date);
   const isToday = date === today;
   const isFuture = date > today;
-  const actionable = firstActionable(plan, state, date, today, nowPart);
+  const actionable = assigned
+    ? firstActionable(plan, state, date, today, nowPart)
+    : null;
   const startItem = actionable
     ? state.items.find((i) => i.id === actionable.itemId)
     : undefined;
+
+  if (!assigned) {
+    return (
+      <div className="flex min-h-full flex-col px-5 pb-4 pt-6">
+        <header className="mb-6 flex items-start justify-between">
+          <div>
+            <p className="text-[13px] font-medium text-ink/45">{weekdayLong(date)}</p>
+            <h1 className="font-heading text-[34px] leading-tight font-bold tracking-tight">
+              {isToday ? "Hôm nay" : weekdayLong(date)}
+            </h1>
+          </div>
+          <Link
+            href="/lich"
+            className="mt-2 flex size-10 items-center justify-center rounded-full bg-white ring-1 ring-ink/10"
+            aria-label="Mở lịch"
+          >
+            <CalendarDays className="size-5 text-ink/50" />
+          </Link>
+        </header>
+
+        <div className="flex flex-1 flex-col items-center justify-center px-4 text-center">
+          <div className="mb-6 text-ink/25" aria-hidden>
+            <svg width="120" height="100" viewBox="0 0 120 100" fill="none">
+              <rect x="30" y="20" width="60" height="55" rx="8" stroke="currentColor" strokeWidth="2" />
+              <path d="M30 35h60" stroke="currentColor" strokeWidth="2" />
+              <circle cx="45" cy="28" r="2" fill="currentColor" />
+              <circle cx="55" cy="28" r="2" fill="currentColor" />
+              <path d="M15 75 Q20 65 25 75" stroke="currentColor" strokeWidth="2" />
+              <path d="M95 75 Q100 65 105 75" stroke="currentColor" strokeWidth="2" />
+            </svg>
+          </div>
+          <h2 className="font-heading text-[26px] font-bold">Chưa gán môn hôm nay</h2>
+          <p className="mt-3 max-w-[280px] text-[15px] leading-relaxed text-ink/50">
+            Hôm nay chỉ hiện môn bạn đã xếp lịch. Cây vẫn còn, PDF không liên quan lịch.
+          </p>
+        </div>
+
+        <div className="mt-6 space-y-3">
+          <CtaButton icon="none" href="/cay">
+            Gán lịch cho môn
+          </CtaButton>
+          <Link
+            href="/cay"
+            className="block py-2 text-center text-[14px] font-medium text-ink/50 underline underline-offset-4"
+          >
+            Xem cây kỹ năng
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-full flex-col px-5 pb-4 pt-6">
@@ -108,17 +163,12 @@ export function TodayScreen() {
           </p>
         ) : isFuture ? (
           <CtaButton icon="none" onClick={() => router.push("/")}>
-            Ôn còn đổi — về hôm nay
+            Về hôm nay
           </CtaButton>
         ) : (
           <CtaButton icon="none" onClick={() => router.push("/")}>
             Ngày đã qua
           </CtaButton>
-        )}
-        {isFuture && (
-          <p className="text-center text-[12px] text-ink/45">
-            Ôn còn đổi. Khung tắt không xếp. Lịch do app xếp, không kéo thả sự kiện.
-          </p>
         )}
         <p className="pt-1 text-center text-[11px] text-ink/35">
           <button type="button" className="underline-offset-2 hover:underline" onClick={resetToDemo}>
@@ -189,7 +239,7 @@ function DaypartSection({
         <div className="rounded-[20px] bg-white px-4 py-5 text-[14px] text-ink/45">
           {enabledDayparts(state, date).length === 0
             ? "Không học"
-            : "Chưa có đầu mục xếp vào khung này."}
+            : "Chưa có đầu mục từ môn đã gán."}
         </div>
       ) : (
         <div className="overflow-hidden rounded-[20px] bg-white">

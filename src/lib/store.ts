@@ -1,4 +1,4 @@
-import { addDays, currentDaypart, vnToday } from "./dates";
+import { addDays } from "./dates";
 import { uid } from "./ids";
 import {
   allUnlockedNodeIds,
@@ -7,7 +7,6 @@ import {
   isNodeComplete,
   orderedNodes,
   previewPlan,
-  reconcileToday,
 } from "./planner";
 import { createEmptyWorkingState, createSeedState } from "./seed";
 import { deleteFile, putFile } from "./files";
@@ -19,10 +18,12 @@ import type {
   LibraryDoc,
   SkillItem,
   SubjectIconId,
+  SubjectSchedule,
 } from "./types";
 import { ACCENT_CYCLE, EMPTY_STATE } from "./types";
+import { currentDaypart, vnToday } from "./dates";
 
-const KEY = "hoc-app:v1";
+const KEY = "hoc-app:v2";
 
 let state: AppState = EMPTY_STATE;
 let ready = false;
@@ -41,12 +42,37 @@ function persist() {
   }
 }
 
-function withPlan(next: AppState, now = new Date()): AppState {
-  return reconcileToday(next, now).state;
+function migrate(raw: unknown): AppState {
+  if (!raw || typeof raw !== "object") return createSeedState();
+  const data = raw as Record<string, unknown>;
+  if (data.version === 2) return data as AppState;
+  if (data.version === 1) {
+    const v1 = data as AppState & {
+      plans?: unknown;
+      roundRobinCursor?: unknown;
+    };
+    return {
+      version: 2,
+      seeded: v1.seeded,
+      subjects: v1.subjects ?? [],
+      nodes: v1.nodes ?? [],
+      items: v1.items ?? [],
+      library: v1.library ?? [],
+      schedules: {},
+      daypartEnabled: v1.daypartEnabled ?? {
+        sang: true,
+        chieu: true,
+        toi: true,
+      },
+      daypartEnabledByDate: v1.daypartEnabledByDate ?? {},
+      completions: v1.completions ?? [],
+    };
+  }
+  return createSeedState();
 }
 
 function setState(updater: (prev: AppState) => AppState) {
-  state = withPlan(updater(state));
+  state = updater(state);
   persist();
   emit();
 }
@@ -71,19 +97,19 @@ export function initStore(): void {
     return;
   }
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(KEY) ?? localStorage.getItem("hoc-app:v1");
     if (raw) {
-      const parsed = JSON.parse(raw) as AppState;
-      if (parsed?.version === 1 && Array.isArray(parsed.subjects)) {
-        state = withPlan(parsed);
+      const parsed = migrate(JSON.parse(raw));
+      if (Array.isArray(parsed.subjects)) {
+        state = parsed;
       } else {
-        state = withPlan(createSeedState());
+        state = createSeedState();
       }
     } else {
-      state = withPlan(createSeedState());
+      state = createSeedState();
     }
   } catch {
-    state = withPlan(createSeedState());
+    state = createSeedState();
   }
   ready = true;
   persist();
@@ -91,13 +117,13 @@ export function initStore(): void {
 }
 
 export function resetToDemo() {
-  state = withPlan(createSeedState());
+  state = createSeedState();
   persist();
   emit();
 }
 
 export function resetEmpty() {
-  state = withPlan(createEmptyWorkingState());
+  state = createEmptyWorkingState();
   persist();
   emit();
 }
@@ -138,15 +164,50 @@ export function renameSubject(id: string, name: string) {
 export function deleteSubject(id: string) {
   setState((s) => {
     const nodeIds = new Set(s.nodes.filter((n) => n.subjectId === id).map((n) => n.id));
+    const rest = { ...s.schedules };
+    delete rest[id];
     return {
       ...s,
       subjects: s.subjects.filter((x) => x.id !== id),
       nodes: s.nodes.filter((n) => n.subjectId !== id),
       items: s.items.filter((i) => !nodeIds.has(i.nodeId)),
+      schedules: rest,
       library: s.library.map((d) =>
         d.subjectId === id ? { ...d, subjectId: null, nodeId: null } : d,
       ),
     };
+  });
+}
+
+export function saveSubjectSchedule(schedule: SubjectSchedule) {
+  setState((s) => ({
+    ...s,
+    schedules: {
+      ...s.schedules,
+      [schedule.subjectId]: { ...schedule, updatedAt: Date.now() },
+    },
+  }));
+}
+
+export function toggleScheduleEnabled(subjectId: string, enabled: boolean) {
+  setState((s) => {
+    const current = s.schedules[subjectId];
+    if (!current) return s;
+    return {
+      ...s,
+      schedules: {
+        ...s.schedules,
+        [subjectId]: { ...current, enabled, updatedAt: Date.now() },
+      },
+    };
+  });
+}
+
+export function deleteSubjectSchedule(subjectId: string) {
+  setState((s) => {
+    const rest = { ...s.schedules };
+    delete rest[subjectId];
+    return { ...s, schedules: rest };
   });
 }
 
@@ -245,13 +306,10 @@ export function toggleDaypart(date: string, part: DaypartId) {
       return s;
     }
     const today = vnToday();
-    const plans = { ...s.plans };
-    delete plans[date];
     if (date === today) {
       return {
         ...s,
         daypartEnabled: { ...s.daypartEnabled, [part]: nextVal },
-        plans,
       };
     }
     return {
@@ -260,7 +318,6 @@ export function toggleDaypart(date: string, part: DaypartId) {
         ...s.daypartEnabledByDate,
         [date]: { ...s.daypartEnabledByDate[date], [part]: nextVal },
       },
-      plans,
     };
   });
 }
@@ -358,26 +415,14 @@ export function practiceXong(itemId: string, date: string, daypart: DaypartId) {
 
 export function practiceChuaVung(itemId: string, date: string) {
   const tomorrow = addDays(date, 1);
-  setState((s) => {
-    const items = s.items.map((i) =>
+  setState((s) => ({
+    ...s,
+    items: s.items.map((i) =>
       i.id === itemId
         ? { ...i, status: "todo" as const, reviewDue: tomorrow }
         : i,
-    );
-    const plan = s.plans[date];
-    const plans = { ...s.plans };
-    if (plan) {
-      plans[date] = {
-        ...plan,
-        slots: {
-          sang: plan.slots.sang.filter((e) => e.itemId !== itemId),
-          chieu: plan.slots.chieu.filter((e) => e.itemId !== itemId),
-          toi: plan.slots.toi.filter((e) => e.itemId !== itemId),
-        },
-      };
-    }
-    return { ...s, items, plans };
-  });
+    ),
+  }));
 }
 
 export function practiceSkip() {

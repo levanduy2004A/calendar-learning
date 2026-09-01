@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { CtaButton } from "@/components/cta-button";
 import { SubjectGlyph } from "@/components/subject-icon";
-import { DaypartGlyph } from "@/components/ui-bits";
+import { DaypartGlyph, KindTag } from "@/components/ui-bits";
 import { SubjectFilters } from "@/components/calendar/subject-filters";
 import { useAppState } from "@/hooks/use-app-state";
 import {
@@ -13,7 +13,6 @@ import {
   currentDaypart,
   formatDayFull,
   monthGrid,
-  monthLabel,
   monthYearLabel,
   parseISODate,
   startOfWeekMonday,
@@ -23,14 +22,15 @@ import {
 } from "@/lib/dates";
 import {
   completedIdsOn,
-  countKinds,
   firstActionable,
   isDaypartEnabled,
   previewPlan,
   subjectIdForItem,
+  subjectNamesOnDate,
 } from "@/lib/planner";
+import { subjectDotsOnDate } from "@/lib/schedules";
 import { ACCENTS } from "@/lib/tokens";
-import type { AccentId, DaypartId } from "@/lib/types";
+import type { DaypartId } from "@/lib/types";
 import { DAYPART_LABEL, DAYPARTS } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -120,72 +120,6 @@ function ViewToggle({
   );
 }
 
-function slotAccents(
-  state: ReturnType<typeof useAppState>["state"],
-  date: string,
-  filter: string,
-): Record<DaypartId, AccentId | "empty" | "off"> {
-  const plan = previewPlan(state, date);
-  const result = {} as Record<DaypartId, AccentId | "empty" | "off">;
-  for (const part of DAYPARTS) {
-    if (!isDaypartEnabled(state, date, part)) {
-      result[part] = "off";
-      continue;
-    }
-    const first = plan.slots[part].find((e) => {
-      if (filter === "all") return true;
-      return subjectIdForItem(state, e.itemId) === filter;
-    });
-    if (!first) {
-      result[part] = "empty";
-      continue;
-    }
-    const item = state.items.find((i) => i.id === first.itemId);
-    const node = item ? state.nodes.find((n) => n.id === item.nodeId) : undefined;
-    const subject = node
-      ? state.subjects.find((s) => s.id === node.subjectId)
-      : undefined;
-    if (filter !== "all" && subject?.id !== filter) {
-      result[part] = "empty";
-      continue;
-    }
-    result[part] = subject?.accent ?? "empty";
-  }
-  return result;
-}
-
-function TickBar({
-  date,
-  filter,
-  vertical,
-}: {
-  date: string;
-  filter: string;
-  vertical?: boolean;
-}) {
-  const { state } = useAppState();
-  const ticks = slotAccents(state, date, filter);
-  return (
-    <div className={cn("flex gap-[3px]", vertical && "flex-col")}>
-      {DAYPARTS.map((p) => {
-        const t = ticks[p];
-        const color =
-          t === "off" || t === "empty" ? "#D9D3C8" : ACCENTS[t].tick;
-        return (
-          <span
-            key={p}
-            className={cn(
-              "rounded-full",
-              vertical ? "h-[7px] w-[3px]" : "size-[7px]",
-            )}
-            style={{ background: color }}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
 function WeekView({
   today,
   selected,
@@ -205,19 +139,18 @@ function WeekView({
   const monday = startOfWeekMonday(selected);
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   const plan = previewPlan(state, selected);
-  const kinds = countKinds(plan, state, filter);
   const nowPart = currentDaypart();
   const actionable = firstActionable(plan, state, selected, today, nowPart);
   const startItem = actionable
     ? state.items.find((i) => i.id === actionable.itemId)
     : undefined;
+  const daySubjects = subjectNamesOnDate(state, selected);
 
   return (
     <>
       <header className="mb-4 flex items-start justify-between">
         <div>
           <h1 className="font-heading text-[34px] leading-tight font-bold">Lịch</h1>
-          <p className="text-[14px] text-ink/45">{monthLabel(selected)}</p>
         </div>
         <ViewToggle view="tuan" onWeek={() => undefined} onMonth={onView} />
       </header>
@@ -227,37 +160,47 @@ function WeekView({
       <div className="grid grid-cols-7 gap-1.5">
         {days.map((d) => {
           const sel = d === selected;
+          const dots = subjectDotsOnDate(state, d, today).filter(
+            (s) => filter === "all" || s.id === filter,
+          );
           return (
             <button
               key={d}
               type="button"
               onClick={() => onSelectDate(d)}
               className={cn(
-                "flex flex-col items-center gap-2 rounded-[16px] bg-white py-2",
-                sel && "ring-1 ring-ink",
+                "flex flex-col items-center gap-1.5 rounded-[16px] py-2",
+                sel ? "bg-white ring-1 ring-ink" : "bg-white/60",
               )}
             >
               <span className="text-[12px] font-semibold">{weekdayShort(d)}</span>
-              <TickBar date={d} filter={filter} vertical />
+              <div className="flex min-h-[10px] gap-[3px]">
+                {dots.map((s) => (
+                  <span
+                    key={s.id}
+                    className="size-[7px] rounded-full"
+                    style={{ background: ACCENTS[s.accent].tick }}
+                  />
+                ))}
+              </div>
+              <DaypartStatusRow date={d} filter={filter} />
             </button>
           );
         })}
       </div>
-      <p className="mt-3 text-[14px] font-medium">
-        {weekdayLong(selected)} · {kinds.review} ôn, {kinds.learn} học mới
+
+      <p className="mt-4 text-[15px] font-semibold">
+        {weekdayLong(selected)}
+        {daySubjects ? ` · ${daySubjects}` : ""}
       </p>
 
-      <div className="mt-4 flex flex-1 flex-col gap-3">
+      <div className="mt-4 flex flex-1 flex-col gap-4">
         {DAYPARTS.map((part) => (
-          <WeekSlot key={part} date={selected} part={part} filter={filter} />
+          <WeekDaypartDetail key={part} date={selected} part={part} filter={filter} />
         ))}
       </div>
 
-      <p className="mt-4 text-center text-[12px] text-ink/40">
-        Lịch do app xếp từ cây và hàng ôn. Không kéo thả sự kiện.
-      </p>
-
-      <div className="mt-3">
+      <div className="mt-4">
         {selected === today && startItem ? (
           <CtaButton
             href={`/practice?itemId=${startItem.id}&date=${selected}&daypart=${actionable?.daypart}`}
@@ -274,7 +217,45 @@ function WeekView({
   );
 }
 
-function WeekSlot({
+function DaypartStatusRow({ date, filter }: { date: string; filter: string }) {
+  const { state } = useAppState();
+  const plan = previewPlan(state, date);
+  const done = completedIdsOn(state.completions, date);
+  const labels = ["S", "C", "T"] as const;
+  const parts: DaypartId[] = ["sang", "chieu", "toi"];
+
+  return (
+    <div className="flex gap-1">
+      {parts.map((part, i) => {
+        const enabled = isDaypartEnabled(state, date, part);
+        const entries = plan.slots[part].filter((e) => {
+          if (filter === "all") return true;
+          return subjectIdForItem(state, e.itemId) === filter;
+        });
+        const allDone =
+          entries.length > 0 && entries.every((e) => done.has(e.itemId));
+        return (
+          <div key={part} className="flex flex-col items-center gap-0.5">
+            <span className="text-[9px] font-medium text-ink/35">{labels[i]}</span>
+            <span
+              className={cn(
+                "flex size-4 items-center justify-center rounded-full text-[8px]",
+                !enabled && "bg-ink/5",
+                enabled && entries.length === 0 && "ring-1 ring-ink/15",
+                enabled && entries.length > 0 && !allDone && "bg-ink/10",
+                allDone && "bg-[#3F8F5A] text-white",
+              )}
+            >
+              {allDone && <Check className="size-2.5" strokeWidth={3} />}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function WeekDaypartDetail({
   date,
   part,
   filter,
@@ -286,64 +267,61 @@ function WeekSlot({
   const { state } = useAppState();
   const plan = previewPlan(state, date);
   const enabled = isDaypartEnabled(state, date, part);
+  const done = completedIdsOn(state.completions, date);
   const entries = plan.slots[part].filter((e) => {
     if (filter === "all") return true;
     return subjectIdForItem(state, e.itemId) === filter;
   });
-  const entry = entries[0];
-  const item = entry ? state.items.find((i) => i.id === entry.itemId) : undefined;
-  const node = item ? state.nodes.find((n) => n.id === item.nodeId) : undefined;
-  const subject = node
-    ? state.subjects.find((s) => s.id === node.subjectId)
-    : undefined;
-  const tint =
-    !enabled || !subject
-      ? "#F3F0EA"
-      : ACCENTS[subject.accent].bg;
 
   return (
-    <Link
-      href={`/?date=${date}`}
-      className="flex overflow-hidden rounded-[20px] bg-white"
-    >
-      <div
-        className="flex w-14 shrink-0 flex-col items-center justify-center gap-1"
-        style={{ background: tint }}
-      >
-        <DaypartGlyph
-          part={part}
-          tone={!enabled ? "off" : part === "sang" ? "done" : "active"}
-        />
+    <section>
+      <div className="mb-2 flex items-center gap-2">
+        <DaypartGlyph part={part} tone={enabled ? "active" : "off"} />
+        <h3 className="text-[15px] font-semibold">{DAYPART_LABEL[part]}</h3>
       </div>
-      <div className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3">
-        {enabled && subject && item && entry ? (
-          <>
-            <SubjectGlyph icon={subject.icon} accent={subject.accent} size="sm" />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span
-                  className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                  style={{
-                    color: ACCENTS[subject.accent].ink,
-                    background: ACCENTS[subject.accent].bg,
-                  }}
+      {!enabled || entries.length === 0 ? (
+        <div className="rounded-[20px] bg-white px-4 py-4 text-[14px] text-ink/40">
+          Không học
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-[20px] bg-white">
+          {entries.map((entry, idx) => {
+            const item = state.items.find((i) => i.id === entry.itemId);
+            if (!item) return null;
+            const node = state.nodes.find((n) => n.id === item.nodeId);
+            const subject = node
+              ? state.subjects.find((s) => s.id === node.subjectId)
+              : undefined;
+            if (!subject) return null;
+            const complete = done.has(entry.itemId);
+            return (
+              <div key={entry.itemId}>
+                {idx > 0 && <div className="mx-4 h-px bg-ink/8" />}
+                <Link
+                  href={
+                    complete
+                      ? "#"
+                      : `/practice?itemId=${entry.itemId}&date=${date}&daypart=${part}`
+                  }
+                  className="flex items-center gap-3 px-4 py-3.5"
                 >
-                  {entry.kind === "review" ? "Ôn lại" : "Học mới"}
-                </span>
-                <span className="text-[12px] text-ink/50">{subject.name}</span>
+                  <SubjectGlyph icon={subject.icon} accent={subject.accent} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <KindTag
+                      kind={entry.kind}
+                      subjectName={subject.name}
+                      accentInk={ACCENTS[subject.accent].ink}
+                    />
+                    <p className="mt-0.5 truncate text-[15px] font-semibold">{item.title}</p>
+                  </div>
+                  <ChevronRight className="size-4 text-ink/30" />
+                </Link>
               </div>
-              <p className="truncate text-[15px] font-semibold">{item.title}</p>
-              {entries.length > 1 && (
-                <p className="text-[12px] text-ink/45">+{entries.length - 1} đầu mục</p>
-              )}
-            </div>
-          </>
-        ) : (
-          <p className="flex-1 text-[15px] text-ink/40">Không học</p>
-        )}
-        <ChevronRight className="size-4 text-ink/30" />
-      </div>
-    </Link>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -410,7 +388,7 @@ function MonthView({
               >
                 {parseISODate(d).d}
               </span>
-              <MonthTicks date={d} filter={filter} />
+              <MonthDots date={d} filter={filter} today={today} />
             </button>
           ) : (
             <div key={`e-${i}`} />
@@ -422,116 +400,42 @@ function MonthView({
         <p className="mb-3 text-[15px] font-semibold">{formatDayFull(selected)}</p>
         <div className="space-y-3">
           {DAYPARTS.map((part) => (
-            <MonthDaypart key={part} date={selected} part={part} filter={filter} />
+            <WeekDaypartDetail key={part} date={selected} part={part} filter={filter} />
           ))}
         </div>
         <div className="mt-4">
           <CtaButton href={`/?date=${selected}`} icon="chevron">
             Xem ngày này
           </CtaButton>
-          <p className="mt-2 text-center text-[12px] text-ink/40">
-            Ôn còn đổi. Khung tắt không xếp.
-          </p>
         </div>
       </div>
     </>
   );
 }
 
-function MonthTicks({ date, filter }: { date: string; filter: string }) {
-  const { state } = useAppState();
-  const plan = previewPlan(state, date);
-  const done = completedIdsOn(state.completions, date);
-  return (
-    <div className="flex gap-[3px]">
-      {DAYPARTS.map((part) => {
-        if (!isDaypartEnabled(state, date, part)) {
-          return (
-            <span key={part} className="size-[8px] rounded-full bg-[#E8E2D8]" />
-          );
-        }
-        const entry = plan.slots[part].find((e) => {
-          if (filter === "all") return true;
-          return subjectIdForItem(state, e.itemId) === filter;
-        });
-        if (!entry) {
-          return (
-            <span key={part} className="size-[8px] rounded-full bg-[#E8E2D8]" />
-          );
-        }
-        const item = state.items.find((i) => i.id === entry.itemId);
-        const node = item && state.nodes.find((n) => n.id === item.nodeId);
-        const subject = node && state.subjects.find((s) => s.id === node.subjectId);
-        const color = subject ? ACCENTS[subject.accent].tick : "#E8E2D8";
-        const checked = done.has(entry.itemId);
-        return (
-          <span
-            key={part}
-            className="flex size-[8px] items-center justify-center rounded-full"
-            style={{ background: color }}
-          >
-            {checked && <Check className="size-[6px] text-white" strokeWidth={4} />}
-          </span>
-        );
-      })}
-    </div>
-  );
-}
-
-function MonthDaypart({
+function MonthDots({
   date,
-  part,
   filter,
+  today,
 }: {
   date: string;
-  part: DaypartId;
   filter: string;
+  today: string;
 }) {
   const { state } = useAppState();
-  const plan = previewPlan(state, date);
-  const enabled = isDaypartEnabled(state, date, part);
-  const entries = plan.slots[part].filter((e) => {
-    if (filter === "all") return true;
-    return subjectIdForItem(state, e.itemId) === filter;
-  });
+  const dots = subjectDotsOnDate(state, date, today).filter(
+    (s) => filter === "all" || s.id === filter,
+  );
+  if (dots.length === 0) return <span className="h-[7px]" />;
   return (
-    <div>
-      <p className="mb-1.5 text-[12px] font-semibold text-ink/45">
-        {DAYPART_LABEL[part]}
-      </p>
-      {!enabled || entries.length === 0 ? (
-        <p className="text-[14px] text-ink/40">Không học</p>
-      ) : (
-        <div className="space-y-2">
-          {entries.map((e) => {
-            const item = state.items.find((i) => i.id === e.itemId);
-            if (!item) return null;
-            const node = state.nodes.find((n) => n.id === item.nodeId);
-            const subject = node
-              ? state.subjects.find((s) => s.id === node.subjectId)
-              : undefined;
-            if (!subject) return null;
-            return (
-              <div key={e.itemId} className="flex items-center gap-2">
-                <SubjectGlyph icon={subject.icon} accent={subject.accent} size="sm" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[12px] text-ink/50">{subject.name}</p>
-                  <p className="truncate text-[14px] font-semibold">{item.title}</p>
-                </div>
-                <span
-                  className="rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1"
-                  style={{
-                    color: ACCENTS[subject.accent].ink,
-                    borderColor: ACCENTS[subject.accent].ink,
-                  }}
-                >
-                  {e.kind === "review" ? "Ôn" : "Học mới"}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
+    <div className="flex gap-[2px]">
+      {dots.slice(0, 3).map((s) => (
+        <span
+          key={s.id}
+          className="size-[6px] rounded-full"
+          style={{ background: ACCENTS[s.accent].tick }}
+        />
+      ))}
     </div>
   );
 }

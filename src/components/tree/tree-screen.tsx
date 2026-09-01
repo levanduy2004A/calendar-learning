@@ -3,13 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  Lock,
-  Plus,
-} from "lucide-react";
+import { CalendarDays, Check, ChevronLeft, ChevronRight, Lock, Plus } from "lucide-react";
 import { SubjectGlyph } from "@/components/subject-icon";
 import { EmptyTree } from "@/components/tree/empty-tree";
 import { LibrarySheet } from "@/components/library/library-sheet";
@@ -46,7 +40,7 @@ export function TreeHome({ subjectId }: { subjectId?: string }) {
           onOpenChange={setAddSubject}
           onCreated={(id) => {
             setAddSubject(false);
-            router.push(`/cay/${id}`);
+            router.push(`/cay/${id}/lich`);
           }}
         />
         <LibrarySheet open={libraryOpen} onOpenChange={setLibraryOpen} />
@@ -109,7 +103,7 @@ export function TreeHome({ subjectId }: { subjectId?: string }) {
       <AddSubjectDialog
         open={addSubject}
         onOpenChange={setAddSubject}
-        onCreated={(id) => router.push(`/cay/${id}`)}
+        onCreated={(id) => router.push(`/cay/${id}/lich`)}
       />
       <AddNodeDialog open={addNode} onOpenChange={setAddNode} subjectId={selected.id} />
       <LibrarySheet
@@ -342,7 +336,18 @@ export function SubjectTreePage({ subjectId }: { subjectId: string }) {
         >
           <ChevronLeft className="size-6" />
         </Link>
-        <Link href="/thu-vien" className="ml-auto text-[13px] font-semibold text-ink/55">
+        <Link
+          href={
+            state.schedules[subject.id]
+              ? `/cay/${subject.id}/lich/sua`
+              : `/cay/${subject.id}/lich`
+          }
+          className="ml-auto flex items-center gap-1.5 text-[13px] font-semibold text-ink/55"
+        >
+          <CalendarDays className="size-4" />
+          Lịch học
+        </Link>
+        <Link href="/thu-vien" className="text-[13px] font-semibold text-ink/55">
           Thêm tài liệu
         </Link>
       </div>

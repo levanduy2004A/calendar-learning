@@ -5,6 +5,13 @@ export type ItemKind = "review" | "new";
 export type DocType = "pdf" | "note" | "youtube" | "image";
 export type NodeLock = "done" | "current" | "next" | "locked";
 
+export type RecurrencePattern = "daily" | "weekdays" | "monthly" | "yearly";
+export type ScheduleRangeKind =
+  | "this_week"
+  | "this_month"
+  | "this_year"
+  | "until_date";
+
 export const DAYPARTS: DaypartId[] = ["sang", "chieu", "toi"];
 
 export const DAYPART_LABEL: Record<DaypartId, string> = {
@@ -20,6 +27,8 @@ export const ACCENT_CYCLE: AccentId[] = [
   "rose",
   "violet",
 ];
+
+export const WEEKDAY_LABELS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"] as const;
 
 export type Subject = {
   id: string;
@@ -82,30 +91,42 @@ export type Completion = {
   daypart: DaypartId;
 };
 
+export type SubjectSchedule = {
+  subjectId: string;
+  enabled: boolean;
+  mode: "recurrence" | "manual";
+  pattern?: RecurrencePattern;
+  weekdays?: number[];
+  range?: ScheduleRangeKind;
+  untilDate?: string;
+  anchorDate: string;
+  manualDates?: string[];
+  createdAt: number;
+  updatedAt: number;
+};
+
 export type AppState = {
-  version: 1;
+  version: 2;
   seeded: boolean;
   subjects: Subject[];
   nodes: SkillNode[];
   items: SkillItem[];
   library: LibraryDoc[];
+  schedules: Record<string, SubjectSchedule>;
   daypartEnabled: Record<DaypartId, boolean>;
   daypartEnabledByDate: Record<string, Partial<Record<DaypartId, boolean>>>;
-  plans: Record<string, DayPlan>;
   completions: Completion[];
-  roundRobinCursor: number;
 };
 
 export const EMPTY_STATE: AppState = {
-  version: 1,
+  version: 2,
   seeded: false,
   subjects: [],
   nodes: [],
   items: [],
   library: [],
+  schedules: {},
   daypartEnabled: { sang: true, chieu: true, toi: true },
   daypartEnabledByDate: {},
-  plans: {},
   completions: [],
-  roundRobinCursor: 0,
 };

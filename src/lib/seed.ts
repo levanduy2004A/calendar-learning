@@ -1,6 +1,13 @@
 import { uid } from "./ids";
 import { vnToday } from "./dates";
-import type { AppState, LibraryDoc, SkillItem, SkillNode, Subject } from "./types";
+import type {
+  AppState,
+  LibraryDoc,
+  SkillItem,
+  SkillNode,
+  Subject,
+  SubjectSchedule,
+} from "./types";
 
 function gChordSvg(): string {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 250">
@@ -193,34 +200,57 @@ export function createSeedState(now = new Date()): AppState {
     },
   ];
 
+  const schedules: Record<string, SubjectSchedule> = {
+    [guitar.id]: {
+      subjectId: guitar.id,
+      enabled: true,
+      mode: "recurrence",
+      pattern: "weekdays",
+      weekdays: [0, 2, 4],
+      range: "this_month",
+      anchorDate: today,
+      createdAt: 1,
+      updatedAt: 1,
+    },
+    [code.id]: {
+      subjectId: code.id,
+      enabled: true,
+      mode: "recurrence",
+      pattern: "weekdays",
+      weekdays: [1, 3],
+      range: "this_month",
+      anchorDate: today,
+      createdAt: 2,
+      updatedAt: 2,
+    },
+  };
+
   return {
-    version: 1,
+    version: 2,
     seeded: true,
     subjects: [guitar, code],
     nodes: [...gNodes, ...cNodes],
     items,
     library,
+    schedules,
     daypartEnabled: { sang: true, chieu: true, toi: false },
     daypartEnabledByDate: {},
-    plans: {},
     completions: [],
-    roundRobinCursor: 0,
   };
 }
 
 export function createEmptyWorkingState(): AppState {
   return {
-    version: 1,
+    version: 2,
     seeded: true,
     subjects: [],
     nodes: [],
     items: [],
     library: [],
+    schedules: {},
     daypartEnabled: { sang: true, chieu: true, toi: true },
     daypartEnabledByDate: {},
-    plans: {},
     completions: [],
-    roundRobinCursor: 0,
   };
 }
 

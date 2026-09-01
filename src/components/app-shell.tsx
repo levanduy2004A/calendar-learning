@@ -8,7 +8,8 @@ import { cn } from "@/lib/utils";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { ready } = useAppState();
-  const immersive = pathname.startsWith("/practice");
+  const immersive =
+    pathname.startsWith("/practice") || pathname.includes("/lich");
 
   return (
     <div className="min-h-dvh bg-[#E8E2D6] text-ink">

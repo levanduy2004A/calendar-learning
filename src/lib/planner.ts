@@ -1,4 +1,5 @@
-import { addDays, currentDaypart, vnToday } from "./dates";
+import { vnToday } from "./dates";
+import { subjectsOnDate } from "./schedules";
 import type {
   AppState,
   Completion,
@@ -91,78 +92,25 @@ export function itemKind(item: SkillItem, date: string): ItemKind {
   return "new";
 }
 
-function isDaypartPast(
-  date: string,
-  part: DaypartId,
-  today: string,
-  nowPart: DaypartId,
-): boolean {
-  if (date < today) return true;
-  if (date > today) return false;
-  return DAYPARTS.indexOf(part) < DAYPARTS.indexOf(nowPart);
+function emptySlots(): Record<DaypartId, PlannedEntry[]> {
+  return { sang: [], chieu: [], toi: [] };
 }
 
-function nextEnabled(
-  from: DaypartId,
-  enabled: DaypartId[],
-): DaypartId | undefined {
-  const idx = enabled.indexOf(from);
-  if (idx < 0) return enabled[0];
-  return enabled[idx + 1];
-}
-
-function pickRoundRobin<T>(
-  n: number,
-  subjectIds: string[],
-  startCursor: number,
-  takeOne: (subjectId: string) => T | undefined,
-): { items: T[]; cursor: number } {
-  const items: T[] = [];
-  let cursor = subjectIds.length ? startCursor % subjectIds.length : 0;
-  if (subjectIds.length === 0 || n <= 0) return { items, cursor };
-  while (items.length < n) {
-    let picked = false;
-    for (let step = 0; step < subjectIds.length; step++) {
-      const idx = (cursor + step) % subjectIds.length;
-      const item = takeOne(subjectIds[idx]);
-      if (item !== undefined) {
-        items.push(item);
-        cursor = (idx + 1) % subjectIds.length;
-        picked = true;
-        break;
-      }
-    }
-    if (!picked) break;
-  }
-  return { items, cursor };
-}
-
-export type PlannerPatches = Record<string, Partial<SkillItem>>;
-
-export type BuildPlanOptions = {
-  date: string;
-  today: string;
-  nowPart: DaypartId;
-  applyRolling: boolean;
-  occupied: Set<string>;
-  existing?: DayPlan;
-  cursor: number;
-};
-
-function candidateItems(
+export function candidateItemsForSubject(
   state: AppState,
+  subjectId: string,
   date: string,
-  occupied: Set<string>,
-): { reviews: SkillItem[]; news: SkillItem[] } {
-  const unlocked = allUnlockedNodeIds(state.subjects, state.nodes, state.items);
-  const nodeSubject = new Map(state.nodes.map((n) => [n.id, n.subjectId]));
+): SkillItem[] {
+  const unlocked = unlockedNodeIds(subjectId, state.nodes, state.items);
+  const nodeIds = new Set(
+    state.nodes.filter((n) => n.subjectId === subjectId).map((n) => n.id),
+  );
   const reviews: SkillItem[] = [];
   const news: SkillItem[] = [];
   for (const item of state.items) {
     if (item.status === "done") continue;
-    if (occupied.has(item.id)) continue;
     if (!unlocked.has(item.nodeId)) continue;
-    if (!nodeSubject.has(item.nodeId)) continue;
+    if (!nodeIds.has(item.nodeId)) continue;
     if (item.reviewDue && item.reviewDue > date) continue;
     if (item.reviewDue && item.reviewDue <= date) reviews.push(item);
     else news.push(item);
@@ -170,191 +118,41 @@ function candidateItems(
   const byId = (a: SkillItem, b: SkillItem) => a.id.localeCompare(b.id);
   reviews.sort(byId);
   news.sort(byId);
-  return { reviews, news };
-}
-
-function subjectOfItem(state: AppState, item: SkillItem): string | undefined {
-  return state.nodes.find((n) => n.id === item.nodeId)?.subjectId;
-}
-
-function fillEntries(
-  state: AppState,
-  date: string,
-  need: number,
-  reviews: SkillItem[],
-  news: SkillItem[],
-  used: Set<string>,
-  cursor: number,
-): { entries: PlannedEntry[]; cursor: number } {
-  const subjectIds = state.subjects.map((s) => s.id);
-  const takeFrom = (pool: SkillItem[], sid: string) => {
-    const item = pool.find((i) => !used.has(i.id) && subjectOfItem(state, i) === sid);
-    if (item) used.add(item.id);
-    return item;
-  };
-
-  const reviewPick = pickRoundRobin(need, subjectIds, cursor, (sid) =>
-    takeFrom(reviews, sid),
-  );
-  const rest = need - reviewPick.items.length;
-  const newPick = pickRoundRobin(rest, subjectIds, reviewPick.cursor, (sid) =>
-    takeFrom(news, sid),
-  );
-
-  const entries: PlannedEntry[] = [
-    ...reviewPick.items.map((i) => ({
-      itemId: i.id,
-      kind: "review" as const,
-      origin: "scheduled" as const,
-    })),
-    ...newPick.items.map((i) => ({
-      itemId: i.id,
-      kind: itemKind(i, date),
-      origin: "scheduled" as const,
-    })),
-  ];
-  return { entries, cursor: newPick.cursor };
-}
-
-function emptySlots(): Record<DaypartId, PlannedEntry[]> {
-  return { sang: [], chieu: [], toi: [] };
-}
-
-function dropInvalid(
-  entries: PlannedEntry[],
-  state: AppState,
-  occupied: Set<string>,
-): PlannedEntry[] {
-  const unlocked = allUnlockedNodeIds(state.subjects, state.nodes, state.items);
-  const byId = new Map(state.items.map((i) => [i.id, i]));
-  return entries.filter((e) => {
-    const item = byId.get(e.itemId);
-    if (!item) return false;
-    if (occupied.has(e.itemId)) return false;
-    if (item.status === "done") return false;
-    if (!unlocked.has(item.nodeId)) return false;
-    return true;
-  });
-}
-
-export function applyRolling(args: {
-  slots: Record<DaypartId, PlannedEntry[]>;
-  date: string;
-  today: string;
-  nowPart: DaypartId;
-  enabled: DaypartId[];
-  completedIds: Set<string>;
-}): { slots: Record<DaypartId, PlannedEntry[]>; overflowIds: string[] } {
-  const slots: Record<DaypartId, PlannedEntry[]> = {
-    sang: [...args.slots.sang],
-    chieu: [...args.slots.chieu],
-    toi: [...args.slots.toi],
-  };
-  const overflowIds: string[] = [];
-  if (args.date !== args.today) {
-    return { slots, overflowIds };
-  }
-
-  for (const part of args.enabled) {
-    if (!isDaypartPast(args.date, part, args.today, args.nowPart)) continue;
-    const stay = slots[part].filter((e) => args.completedIds.has(e.itemId));
-    const incomplete = slots[part].filter((e) => !args.completedIds.has(e.itemId));
-    slots[part] = stay;
-    if (incomplete.length === 0) continue;
-    const next = nextEnabled(part, args.enabled);
-    if (!next) {
-      overflowIds.push(...incomplete.map((e) => e.itemId));
-      continue;
-    }
-    const room = Math.max(0, 3 - slots[next].length);
-    const moving = incomplete.slice(0, room).map((e) => ({
-      ...e,
-      origin: "rolled" as const,
-    }));
-    const rest = incomplete.slice(room);
-    slots[next] = [...slots[next], ...moving];
-    overflowIds.push(...rest.map((e) => e.itemId));
-  }
-  return { slots, overflowIds };
+  return [...reviews, ...news];
 }
 
 export function buildDayPlan(
   state: AppState,
-  options: BuildPlanOptions,
-): { plan: DayPlan; overflowIds: string[]; cursor: number } {
-  const enabled = enabledDayparts(state, options.date);
-  const completedToday = new Set(
-    state.completions
-      .filter((c) => c.date === options.date)
-      .map((c) => c.itemId),
-  );
-  const used = new Set<string>(options.occupied);
+  date: string,
+  referenceDate: string = date,
+): DayPlan {
+  const assigned = subjectsOnDate(state, date, referenceDate);
+  const enabled = enabledDayparts(state, date);
   const slots = emptySlots();
-  let cursor = options.cursor;
 
-  const existing = options.existing?.date === options.date ? options.existing : undefined;
+  if (assigned.length === 0 || enabled.length === 0) {
+    return { date, slots, generatedAt: Date.now() };
+  }
 
-  if (existing) {
-    for (const part of DAYPARTS) {
-      const keptCompleted = existing.slots[part].filter((e) =>
-        completedToday.has(e.itemId),
-      );
-      const keptOpen = dropInvalid(existing.slots[part], state, used).filter(
-        (e) => !completedToday.has(e.itemId),
-      );
-      slots[part] = [...keptCompleted, ...keptOpen].slice(0, 3);
-      for (const e of slots[part]) used.add(e.itemId);
+  const sortedSubjects = [...assigned].sort((a, b) =>
+    a.id.localeCompare(b.id),
+  );
+
+  for (const subject of sortedSubjects) {
+    const items = candidateItemsForSubject(state, subject.id, date);
+    let daypartIdx = 0;
+    for (const item of items) {
+      const part = enabled[daypartIdx % enabled.length];
+      slots[part].push({
+        itemId: item.id,
+        kind: itemKind(item, date),
+        origin: "scheduled",
+      });
+      daypartIdx += 1;
     }
   }
 
-  const { reviews, news } = candidateItems(state, options.date, used);
-
-  for (const part of enabled) {
-    const past = isDaypartPast(
-      options.date,
-      part,
-      options.today,
-      options.nowPart,
-    );
-    // Do not schedule into a daypart that has already passed.
-    // Missed items only roll from a plan that was already persisted.
-    if (past) continue;
-    const need = 3 - slots[part].length;
-    if (need <= 0) continue;
-    const filled = fillEntries(state, options.date, need, reviews, news, used, cursor);
-    slots[part] = [...slots[part], ...filled.entries];
-    cursor = filled.cursor;
-  }
-
-  let overflowIds: string[] = [];
-  let rolled = slots;
-  if (options.applyRolling) {
-    const rolledRes = applyRolling({
-      slots,
-      date: options.date,
-      today: options.today,
-      nowPart: options.nowPart,
-      enabled,
-      completedIds: completedToday,
-    });
-    rolled = rolledRes.slots;
-    overflowIds = rolledRes.overflowIds;
-  }
-
-  for (const part of DAYPARTS) {
-    if (!enabled.includes(part)) rolled[part] = [];
-    rolled[part] = rolled[part].slice(0, 3);
-  }
-
-  return {
-    plan: {
-      date: options.date,
-      slots: rolled,
-      generatedAt: Date.now(),
-    },
-    overflowIds,
-    cursor,
-  };
+  return { date, slots, generatedAt: Date.now() };
 }
 
 export function completedIdsOn(completions: Completion[], date: string): Set<string> {
@@ -434,7 +232,7 @@ export function countKinds(
 export function slotSubjectAccents(
   plan: DayPlan,
   state: AppState,
-): Record<DaypartId, AccentId | null> {
+): Record<DaypartId, import("./types").AccentId | null> {
   const itemMap = new Map(state.items.map((i) => [i.id, i]));
   const nodeMap = new Map(state.nodes.map((n) => [n.id, n]));
   const subjectMap = new Map(state.subjects.map((s) => [s.id, s]));
@@ -477,91 +275,31 @@ export function resolveAttachment(
   );
 }
 
-export function reconcileToday(
-  state: AppState,
-  now = new Date(),
-): { state: AppState; plan: DayPlan } {
-  const today = vnToday(now);
-  const nowPart = currentDaypart(now);
-  const built = buildDayPlan(state, {
-    date: today,
-    today,
-    nowPart,
-    applyRolling: true,
-    occupied: new Set(),
-    existing: state.plans[today],
-    cursor: state.roundRobinCursor,
-  });
-  const tomorrow = addDays(today, 1);
-  const items = state.items.map((item) => {
-    if (!built.overflowIds.includes(item.id)) return item;
-    if (item.status === "done") return item;
-    const due = item.reviewDue && item.reviewDue > tomorrow ? item.reviewDue : tomorrow;
-    return { ...item, reviewDue: due };
-  });
-  const next: AppState = {
-    ...state,
-    items,
-    plans: { ...state.plans, [today]: built.plan },
-    roundRobinCursor: built.cursor,
-  };
-  return { state: next, plan: built.plan };
-}
-
 export function previewPlan(
   state: AppState,
   date: string,
   now = new Date(),
 ): DayPlan {
   const today = vnToday(now);
-  if (date === today) {
-    return reconcileToday(state, now).plan;
-  }
-  if (date < today && state.plans[date]) return state.plans[date];
+  return buildDayPlan(state, date, today);
+}
 
-  const occupied = new Set<string>();
-  if (date > today) {
-    const todayPlan = state.plans[today];
-    if (todayPlan) {
-      for (const part of DAYPARTS) {
-        for (const e of todayPlan.slots[part]) occupied.add(e.itemId);
-      }
-    }
-    let cursorDate = addDays(today, 1);
-    let cursor = state.roundRobinCursor;
-    const walkState = state;
-    while (cursorDate < date) {
-      const built = buildDayPlan(walkState, {
-        date: cursorDate,
-        today,
-        nowPart: currentDaypart(now),
-        applyRolling: false,
-        occupied,
-        cursor,
-      });
-      for (const part of DAYPARTS) {
-        for (const e of built.plan.slots[part]) occupied.add(e.itemId);
-      }
-      cursor = built.cursor;
-      cursorDate = addDays(cursorDate, 1);
-    }
-    return buildDayPlan(walkState, {
-      date,
-      today,
-      nowPart: currentDaypart(now),
-      applyRolling: false,
-      occupied,
-      cursor,
-    }).plan;
-  }
+export function hasAssignedSubjects(
+  state: AppState,
+  date: string,
+  now = new Date(),
+): boolean {
+  const today = vnToday(now);
+  return subjectsOnDate(state, date, today).length > 0;
+}
 
-  return buildDayPlan(state, {
-    date,
-    today,
-    nowPart: currentDaypart(now),
-    applyRolling: false,
-    occupied: new Set(),
-    existing: state.plans[date],
-    cursor: state.roundRobinCursor,
-  }).plan;
+export function subjectNamesOnDate(
+  state: AppState,
+  date: string,
+  now = new Date(),
+): string {
+  const today = vnToday(now);
+  return subjectsOnDate(state, date, today)
+    .map((s) => s.name)
+    .join(", ");
 }
