@@ -160,7 +160,7 @@ function WeekView({
       <div className="grid grid-cols-7 gap-1.5">
         {days.map((d) => {
           const sel = d === selected;
-          const dots = subjectDotsOnDate(state, d, today).filter(
+          const dots = subjectDotsOnDate(state, d).filter(
             (s) => filter === "all" || s.id === filter,
           );
           return (
@@ -388,7 +388,7 @@ function MonthView({
               >
                 {parseISODate(d).d}
               </span>
-              <MonthDots date={d} filter={filter} today={today} />
+              <MonthDots date={d} filter={filter} />
             </button>
           ) : (
             <div key={`e-${i}`} />
@@ -416,14 +416,12 @@ function MonthView({
 function MonthDots({
   date,
   filter,
-  today,
 }: {
   date: string;
   filter: string;
-  today: string;
 }) {
   const { state } = useAppState();
-  const dots = subjectDotsOnDate(state, date, today).filter(
+  const dots = subjectDotsOnDate(state, date).filter(
     (s) => filter === "all" || s.id === filter,
   );
   if (dots.length === 0) return <span className="h-[7px]" />;

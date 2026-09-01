@@ -1,5 +1,5 @@
 import { vnToday } from "./dates";
-import { subjectsOnDate } from "./schedules";
+import { expiredSubjectsOnDate, subjectsOnDate } from "./schedules";
 import type {
   AppState,
   Completion,
@@ -121,12 +121,8 @@ export function candidateItemsForSubject(
   return [...reviews, ...news];
 }
 
-export function buildDayPlan(
-  state: AppState,
-  date: string,
-  referenceDate: string = date,
-): DayPlan {
-  const assigned = subjectsOnDate(state, date, referenceDate);
+export function buildDayPlan(state: AppState, date: string): DayPlan {
+  const assigned = subjectsOnDate(state, date);
   const enabled = enabledDayparts(state, date);
   const slots = emptySlots();
 
@@ -280,26 +276,20 @@ export function previewPlan(
   date: string,
   now = new Date(),
 ): DayPlan {
-  const today = vnToday(now);
-  return buildDayPlan(state, date, today);
+  void now;
+  return buildDayPlan(state, date);
 }
 
-export function hasAssignedSubjects(
-  state: AppState,
-  date: string,
-  now = new Date(),
-): boolean {
-  const today = vnToday(now);
-  return subjectsOnDate(state, date, today).length > 0;
+export function hasAssignedSubjects(state: AppState, date: string): boolean {
+  return subjectsOnDate(state, date).length > 0;
 }
 
-export function subjectNamesOnDate(
-  state: AppState,
-  date: string,
-  now = new Date(),
-): string {
-  const today = vnToday(now);
-  return subjectsOnDate(state, date, today)
+export function hasExpiredSchedulesOnDate(state: AppState, date: string): boolean {
+  return expiredSubjectsOnDate(state, date).length > 0;
+}
+
+export function subjectNamesOnDate(state: AppState, date: string): string {
+  return subjectsOnDate(state, date)
     .map((s) => s.name)
     .join(", ");
 }

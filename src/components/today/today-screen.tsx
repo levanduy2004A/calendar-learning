@@ -13,9 +13,11 @@ import {
   enabledDayparts,
   firstActionable,
   hasAssignedSubjects,
+  hasExpiredSchedulesOnDate,
   isDaypartEnabled,
   previewPlan,
 } from "@/lib/planner";
+import { expiredSubjectsOnDate } from "@/lib/schedules";
 import { resetEmpty, resetToDemo, toggleDaypart } from "@/lib/store";
 import { ACCENTS } from "@/lib/tokens";
 import type { DaypartId, PlannedEntry } from "@/lib/types";
@@ -40,6 +42,7 @@ export function TodayScreen() {
   const date = params.get("date") || today;
   const nowPart = currentDaypart();
   const assigned = hasAssignedSubjects(state, date);
+  const expired = hasExpiredSchedulesOnDate(state, date);
   const plan = previewPlan(state, date);
   const done = completedIdsOn(state.completions, date);
   const isToday = date === today;
@@ -52,6 +55,9 @@ export function TodayScreen() {
     : undefined;
 
   if (!assigned) {
+    const expiredNames = expiredSubjectsOnDate(state, date)
+      .map((s) => s.name)
+      .join(", ");
     return (
       <div className="flex min-h-full flex-col px-5 pb-4 pt-6">
         <header className="mb-6 flex items-start justify-between">
@@ -81,15 +87,28 @@ export function TodayScreen() {
               <path d="M95 75 Q100 65 105 75" stroke="currentColor" strokeWidth="2" />
             </svg>
           </div>
-          <h2 className="font-heading text-[26px] font-bold">Chưa gán môn hôm nay</h2>
-          <p className="mt-3 max-w-[280px] text-[15px] leading-relaxed text-ink/50">
-            Hôm nay chỉ hiện môn bạn đã xếp lịch. Cây vẫn còn, PDF không liên quan lịch.
-          </p>
+          {expired ? (
+            <>
+              <h2 className="font-heading text-[26px] font-bold">Lịch đã hết hạn</h2>
+              <p className="mt-3 max-w-[280px] text-[15px] leading-relaxed text-ink/50">
+                {expiredNames
+                  ? `Lịch ${expiredNames} không còn trong phạm vi đã lưu. Cây và tài liệu vẫn giữ nguyên.`
+                  : "Lịch môn không còn trong phạm vi đã lưu. Cây và tài liệu vẫn giữ nguyên."}
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="font-heading text-[26px] font-bold">Chưa gán môn hôm nay</h2>
+              <p className="mt-3 max-w-[280px] text-[15px] leading-relaxed text-ink/50">
+                Hôm nay chỉ hiện môn bạn đã xếp lịch. Cây vẫn còn, PDF không liên quan lịch.
+              </p>
+            </>
+          )}
         </div>
 
         <div className="mt-6 space-y-3">
           <CtaButton icon="none" href="/cay">
-            Gán lịch cho môn
+            {expired ? "Gia hạn lịch môn" : "Gán lịch cho môn"}
           </CtaButton>
           <Link
             href="/cay"

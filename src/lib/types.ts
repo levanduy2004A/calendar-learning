@@ -99,6 +99,10 @@ export type SubjectSchedule = {
   weekdays?: number[];
   range?: ScheduleRangeKind;
   untilDate?: string;
+  /** Frozen at save: first day the recurrence range applies. */
+  rangeStart?: string;
+  /** Frozen at save: last day the recurrence range applies. */
+  rangeEnd?: string;
   anchorDate: string;
   manualDates?: string[];
   createdAt: number;

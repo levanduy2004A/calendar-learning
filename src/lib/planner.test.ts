@@ -3,6 +3,7 @@ import {
   buildDayPlan,
   candidateItemsForSubject,
   hasAssignedSubjects,
+  hasExpiredSchedulesOnDate,
   isNodeComplete,
   previewPlan,
   unlockedNodeIds,
@@ -29,7 +30,7 @@ describe("assigned-subject planning", () => {
     const date = "2026-09-01";
     const s = createSeedState(atHour(date, 9));
     expect(hasAssignedSubjects(s, date)).toBe(true);
-    const plan = buildDayPlan(s, date, date);
+    const plan = buildDayPlan(s, date);
     const itemIds = [
       ...plan.slots.sang,
       ...plan.slots.chieu,
@@ -54,6 +55,12 @@ describe("assigned-subject planning", () => {
     expect(plan.slots.toi).toEqual([]);
   });
 
+  it("detects expired schedules after frozen month ends", () => {
+    const s = createSeedState(atHour("2026-09-15", 9));
+    expect(hasAssignedSubjects(s, "2026-10-01")).toBe(false);
+    expect(hasExpiredSchedulesOnDate(s, "2026-10-01")).toBe(true);
+  });
+
   it("puts reviews before new items within a subject", () => {
     const date = "2026-09-01";
     const s = createSeedState(atHour(date, 9));
@@ -65,7 +72,7 @@ describe("assigned-subject planning", () => {
   it("only includes items from subjects scheduled that day", () => {
     const date = "2026-09-08";
     const s = createSeedState(atHour(date, 9));
-    const plan = buildDayPlan(s, date, date);
+    const plan = buildDayPlan(s, date);
     const itemIds = [
       ...plan.slots.sang,
       ...plan.slots.chieu,
@@ -81,7 +88,7 @@ describe("assigned-subject planning", () => {
   it("includes guitar items on scheduled guitar days", () => {
     const date = "2026-09-07";
     const s = createSeedState(atHour(date, 9));
-    const plan = buildDayPlan(s, date, date);
+    const plan = buildDayPlan(s, date);
     const guitarInPlan = [...plan.slots.sang, ...plan.slots.chieu].some((e) =>
       e.itemId.startsWith("item_g"),
     );
@@ -90,10 +97,11 @@ describe("assigned-subject planning", () => {
 });
 
 describe("seed integrity", () => {
-  it("demo has schedules for Guitar and Lập trình", () => {
+  it("demo has frozen-range schedules for Guitar and Lập trình", () => {
     const s = createSeedState(atHour("2026-09-01", 10));
     expect(s.subjects.map((x) => x.name)).toEqual(["Guitar", "Lập trình"]);
-    expect(s.schedules.sub_guitar?.pattern).toBe("weekdays");
+    expect(s.schedules.sub_guitar?.rangeStart).toBeTruthy();
+    expect(s.schedules.sub_guitar?.rangeEnd).toBeTruthy();
     expect(s.schedules.sub_code?.weekdays).toEqual([1, 3]);
     expect(s.version).toBe(2);
   });

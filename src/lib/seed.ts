@@ -1,5 +1,6 @@
 import { uid } from "./ids";
 import { vnToday } from "./dates";
+import { defaultRecurrenceSchedule } from "./schedules";
 import type {
   AppState,
   LibraryDoc,
@@ -201,27 +202,10 @@ export function createSeedState(now = new Date()): AppState {
   ];
 
   const schedules: Record<string, SubjectSchedule> = {
-    [guitar.id]: {
-      subjectId: guitar.id,
-      enabled: true,
-      mode: "recurrence",
-      pattern: "weekdays",
-      weekdays: [0, 2, 4],
-      range: "this_month",
-      anchorDate: today,
-      createdAt: 1,
-      updatedAt: 1,
-    },
+    [guitar.id]: defaultRecurrenceSchedule(guitar.id, today),
     [code.id]: {
-      subjectId: code.id,
-      enabled: true,
-      mode: "recurrence",
-      pattern: "weekdays",
+      ...defaultRecurrenceSchedule(code.id, today),
       weekdays: [1, 3],
-      range: "this_month",
-      anchorDate: today,
-      createdAt: 2,
-      updatedAt: 2,
     },
   };
 

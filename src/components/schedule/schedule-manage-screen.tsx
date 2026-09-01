@@ -16,7 +16,6 @@ import {
   toggleScheduleEnabled,
 } from "@/lib/store";
 import { scheduleSummary } from "@/lib/schedules";
-import { vnToday } from "@/lib/dates";
 import { WEEKDAY_LABELS } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAppState } from "@/hooks/use-app-state";
@@ -26,7 +25,6 @@ export function ScheduleManageScreen({ subjectId }: { subjectId: string }) {
   const router = useRouter();
   const subject = state.subjects.find((s) => s.id === subjectId);
   const schedule = state.schedules[subjectId];
-  const today = vnToday();
 
   if (!subject) {
     return (
@@ -66,7 +64,7 @@ export function ScheduleManageScreen({ subjectId }: { subjectId: string }) {
             <div className="flex items-center gap-3 rounded-[20px] bg-white px-4 py-3.5 ring-1 ring-ink/8">
               <CalendarDays className="size-5 shrink-0 text-ink/40" />
               <p className="text-[14px] font-medium leading-snug">
-                {scheduleSummary(schedule, subject.name, today)}
+                {scheduleSummary(schedule)}
               </p>
             </div>
             {schedule.mode === "recurrence" && schedule.pattern === "weekdays" && (

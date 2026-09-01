@@ -7,8 +7,8 @@ import { CalendarDays, ChevronLeft } from "lucide-react";
 import { CtaButton } from "@/components/cta-button";
 import { saveSubjectSchedule } from "@/lib/store";
 import {
-  defaultManualSchedule,
-  defaultRecurrenceSchedule,
+  canSaveSchedule,
+  isRecurrenceScheduleValid,
 } from "@/lib/schedules";
 import { addDays, monthGrid, monthYearLabel, parseISODate, vnToday } from "@/lib/dates";
 import type {
@@ -134,26 +134,46 @@ export function ScheduleSetupScreen({ subjectId }: { subjectId: string }) {
 
   const save = () => {
     if (!subject) return;
-    const base: SubjectSchedule =
+    const draft: SubjectSchedule =
       tab === "lap"
         ? {
-            ...defaultRecurrenceSchedule(subjectId, today),
+            subjectId,
+            enabled: true,
+            mode: "recurrence",
             pattern,
             weekdays: pattern === "weekdays" ? weekdays : undefined,
             range,
             untilDate: range === "until_date" ? untilDate : undefined,
+            anchorDate: today,
+            createdAt: existing?.createdAt ?? Date.now(),
+            updatedAt: Date.now(),
           }
         : {
-            ...defaultManualSchedule(subjectId, today),
+            subjectId,
+            enabled: true,
+            mode: "manual",
             manualDates,
+            anchorDate: today,
+            createdAt: existing?.createdAt ?? Date.now(),
+            updatedAt: Date.now(),
           };
-    if (existing) {
-      base.createdAt = existing.createdAt;
-      base.anchorDate = existing.anchorDate;
-    }
-    saveSubjectSchedule(base);
+    if (!canSaveSchedule(draft)) return;
+    const ok = saveSubjectSchedule(draft, today);
+    if (!ok) return;
     router.push(`/cay/${subjectId}`);
   };
+
+  const lapSaveBlocked =
+    tab === "lap" && pattern === "weekdays" && !isRecurrenceScheduleValid({
+      subjectId,
+      enabled: true,
+      mode: "recurrence",
+      pattern: "weekdays",
+      weekdays,
+      anchorDate: today,
+      createdAt: 0,
+      updatedAt: 0,
+    });
 
   const sortedManual = useMemo(
     () => [...manualDates].sort(),
@@ -223,6 +243,11 @@ export function ScheduleSetupScreen({ subjectId }: { subjectId: string }) {
                   </Chip>
                 ))}
               </div>
+              {lapSaveBlocked && (
+                <p className="mt-2 text-[13px] text-[#B42318]">
+                  Chọn ít nhất một thứ (T2–CN) để lưu lịch lặp.
+                </p>
+              )}
             </section>
           )}
 
@@ -354,7 +379,9 @@ export function ScheduleSetupScreen({ subjectId }: { subjectId: string }) {
         <CtaButton
           icon="none"
           onClick={save}
-          disabled={tab === "chon" && manualDates.length === 0}
+          disabled={
+            (tab === "chon" && manualDates.length === 0) || lapSaveBlocked
+          }
         >
           {tab === "lap" ? "Lưu lịch học" : "Lưu những ngày này"}
         </CtaButton>

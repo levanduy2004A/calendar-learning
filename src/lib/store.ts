@@ -10,6 +10,10 @@ import {
 } from "./planner";
 import { createEmptyWorkingState, createSeedState } from "./seed";
 import { deleteFile, putFile } from "./files";
+import {
+  finalizeScheduleForSave,
+  normalizeSchedules,
+} from "./schedules";
 import type {
   AccentId,
   AppState,
@@ -45,7 +49,13 @@ function persist() {
 function migrate(raw: unknown): AppState {
   if (!raw || typeof raw !== "object") return createSeedState();
   const data = raw as Record<string, unknown>;
-  if (data.version === 2) return data as AppState;
+  if (data.version === 2) {
+    const v2 = data as AppState;
+    return {
+      ...v2,
+      schedules: normalizeSchedules(v2.schedules ?? {}),
+    };
+  }
   if (data.version === 1) {
     const v1 = data as AppState & {
       plans?: unknown;
@@ -58,7 +68,10 @@ function migrate(raw: unknown): AppState {
       nodes: v1.nodes ?? [],
       items: v1.items ?? [],
       library: v1.library ?? [],
-      schedules: {},
+      schedules: normalizeSchedules(
+        (v1 as AppState & { schedules?: Record<string, SubjectSchedule> })
+          .schedules ?? {},
+      ),
       daypartEnabled: v1.daypartEnabled ?? {
         sang: true,
         chieu: true,
@@ -179,14 +192,17 @@ export function deleteSubject(id: string) {
   });
 }
 
-export function saveSubjectSchedule(schedule: SubjectSchedule) {
+export function saveSubjectSchedule(schedule: SubjectSchedule, savedOn = vnToday()) {
+  const finalized = finalizeScheduleForSave(schedule, savedOn);
+  if (!finalized) return false;
   setState((s) => ({
     ...s,
     schedules: {
       ...s.schedules,
-      [schedule.subjectId]: { ...schedule, updatedAt: Date.now() },
+      [finalized.subjectId]: finalized,
     },
   }));
+  return true;
 }
 
 export function toggleScheduleEnabled(subjectId: string, enabled: boolean) {
