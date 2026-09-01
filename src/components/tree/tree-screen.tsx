@@ -8,6 +8,7 @@ import { SubjectGlyph } from "@/components/subject-icon";
 import { EmptyTree } from "@/components/tree/empty-tree";
 import { LibrarySheet } from "@/components/library/library-sheet";
 import { AddItemDialog, AddNodeDialog, AddSubjectDialog } from "@/components/forms/edit-dialogs";
+import { ActionChip } from "@/components/ui-bits";
 import { useAppState } from "@/hooks/use-app-state";
 import { itemsOfNode, nodeLockState, orderedNodes } from "@/lib/planner";
 import { deleteNode, deleteSubject } from "@/lib/store";
@@ -52,12 +53,7 @@ export function TreeHome({ subjectId }: { subjectId?: string }) {
     <div className="flex min-h-full flex-col px-5 pb-6 pt-5">
       <div className="mb-4 flex items-center justify-between gap-2">
         <h1 className="font-heading text-[28px] font-bold">Cây kỹ năng</h1>
-        <Link
-          href="/thu-vien"
-          className="text-[13px] font-semibold text-ink/55 underline-offset-2 hover:underline"
-        >
-          Thư viện
-        </Link>
+        <ActionChip href="/thu-vien">Thư viện</ActionChip>
       </div>
 
       <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
@@ -79,14 +75,10 @@ export function TreeHome({ subjectId }: { subjectId?: string }) {
             {s.name}
           </Link>
         ))}
-        <button
-          type="button"
-          onClick={() => setAddSubject(true)}
-          className="flex h-9 items-center gap-1 rounded-full px-3 text-[13px] font-semibold text-ink/55 ring-1 ring-ink/10"
-        >
+        <ActionChip onClick={() => setAddSubject(true)}>
           <Plus className="size-4" />
           Thêm môn
-        </button>
+        </ActionChip>
       </div>
 
       {nodes.length === 0 ? (
@@ -336,20 +328,18 @@ export function SubjectTreePage({ subjectId }: { subjectId: string }) {
         >
           <ChevronLeft className="size-6" />
         </Link>
-        <Link
+        <ActionChip
           href={
             state.schedules[subject.id]
               ? `/cay/${subject.id}/lich/sua`
               : `/cay/${subject.id}/lich`
           }
-          className="ml-auto flex items-center gap-1.5 text-[13px] font-semibold text-ink/55"
+          className="ml-auto"
         >
           <CalendarDays className="size-4" />
           Lịch học
-        </Link>
-        <Link href="/thu-vien" className="text-[13px] font-semibold text-ink/55">
-          Thêm tài liệu
-        </Link>
+        </ActionChip>
+        <ActionChip href="/thu-vien">Thêm tài liệu</ActionChip>
       </div>
       {nodes.length === 0 ? (
         <EmptyTree

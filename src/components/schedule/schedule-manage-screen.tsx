@@ -11,6 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { CtaButton } from "@/components/cta-button";
+import { SecondaryAction } from "@/components/ui-bits";
 import {
   deleteSubjectSchedule,
   toggleScheduleEnabled,
@@ -155,12 +156,9 @@ export function ScheduleManageScreen({ subjectId }: { subjectId: string }) {
       ) : (
         <div className="rounded-[20px] bg-white px-4 py-8 text-center ring-1 ring-ink/8">
           <p className="text-[15px] text-ink/50">Chưa có lịch cho môn này.</p>
-          <Link
-            href={`/cay/${subjectId}/lich`}
-            className="mt-4 inline-block text-[14px] font-semibold underline"
-          >
+          <SecondaryAction href={`/cay/${subjectId}/lich`} className="mt-4">
             Gán lịch học
-          </Link>
+          </SecondaryAction>
         </div>
       )}
 

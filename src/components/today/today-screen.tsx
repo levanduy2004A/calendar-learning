@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarDays, Check, ChevronRight } from "lucide-react";
 import { CtaButton } from "@/components/cta-button";
 import { SubjectGlyph } from "@/components/subject-icon";
-import { DaypartGlyph, KindTag, Pill } from "@/components/ui-bits";
+import { DaypartGlyph, KindTag, Pill, SecondaryAction } from "@/components/ui-bits";
 import { useAppState } from "@/hooks/use-app-state";
 import { currentDaypart, formatDayFull, vnToday, weekdayLong } from "@/lib/dates";
 import {
@@ -110,12 +110,7 @@ export function TodayScreen() {
           <CtaButton icon="none" href="/cay">
             {expired ? "Gia hạn lịch môn" : "Gán lịch cho môn"}
           </CtaButton>
-          <Link
-            href="/cay"
-            className="block py-2 text-center text-[14px] font-medium text-ink/50 underline underline-offset-4"
-          >
-            Xem cây kỹ năng
-          </Link>
+          <SecondaryAction href="/cay">Xem cây kỹ năng</SecondaryAction>
         </div>
       </div>
     );

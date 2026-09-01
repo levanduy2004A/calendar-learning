@@ -1,6 +1,7 @@
 "use client";
 
 import { CtaButton } from "@/components/cta-button";
+import { SecondaryAction } from "@/components/ui-bits";
 
 export function EmptyTree({
   hasSubject,
@@ -33,21 +34,9 @@ export function EmptyTree({
           Tạo ô trên cây
         </CtaButton>
         {!hasSubject && onCreateSubject && (
-          <button
-            type="button"
-            onClick={onCreateSubject}
-            className="w-full text-[14px] font-semibold text-ink/70 underline underline-offset-4"
-          >
-            Thêm môn trước
-          </button>
+          <SecondaryAction onClick={onCreateSubject}>Thêm môn trước</SecondaryAction>
         )}
-        <button
-          type="button"
-          onClick={onAddMaterial}
-          className="w-full text-[14px] font-semibold text-ink/70 underline underline-offset-4"
-        >
-          Thêm tài liệu
-        </button>
+        <SecondaryAction onClick={onAddMaterial}>Thêm tài liệu</SecondaryAction>
       </div>
     </div>
   );

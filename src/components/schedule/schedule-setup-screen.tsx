@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarDays, ChevronLeft } from "lucide-react";
 import { CtaButton } from "@/components/cta-button";
+import { SecondaryAction } from "@/components/ui-bits";
 import { saveSubjectSchedule } from "@/lib/store";
 import {
   canSaveSchedule,
@@ -385,13 +386,9 @@ export function ScheduleSetupScreen({ subjectId }: { subjectId: string }) {
         >
           {tab === "lap" ? "Lưu lịch học" : "Lưu những ngày này"}
         </CtaButton>
-        <button
-          type="button"
-          onClick={() => router.push(`/cay/${subjectId}`)}
-          className="block w-full py-2 text-center text-[14px] font-medium text-ink/50 underline underline-offset-4"
-        >
+        <SecondaryAction onClick={() => router.push(`/cay/${subjectId}`)}>
           Bỏ qua, gán sau
-        </button>
+        </SecondaryAction>
       </div>
     </div>
   );

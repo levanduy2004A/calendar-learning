@@ -1,6 +1,7 @@
 "use client";
 
 import { Moon, Sun } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { DaypartId } from "@/lib/types";
 
@@ -74,6 +75,62 @@ export function Pill({
         className,
       )}
     >
+      {children}
+    </button>
+  );
+}
+
+const actionChipClass =
+  "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-white px-3.5 text-[13px] font-semibold text-ink ring-1 ring-ink/25 transition active:scale-[0.98]";
+
+export function ActionChip({
+  children,
+  className,
+  href,
+  onClick,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  href?: string;
+  onClick?: () => void;
+}) {
+  if (href) {
+    return (
+      <Link href={href} className={cn(actionChipClass, className)}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <button type="button" onClick={onClick} className={cn(actionChipClass, className)}>
+      {children}
+    </button>
+  );
+}
+
+const secondaryActionClass =
+  "flex h-11 w-full items-center justify-center rounded-[16px] bg-white px-4 text-[14px] font-semibold text-ink ring-1 ring-ink/25 transition active:scale-[0.99]";
+
+export function SecondaryAction({
+  children,
+  className,
+  href,
+  onClick,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  href?: string;
+  onClick?: () => void;
+}) {
+  if (href) {
+    return (
+      <Link href={href} className={cn(secondaryActionClass, className)}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <button type="button" onClick={onClick} className={cn(secondaryActionClass, className)}>
       {children}
     </button>
   );
