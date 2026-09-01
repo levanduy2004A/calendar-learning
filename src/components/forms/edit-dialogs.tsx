@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { createItem, createNode, createSubject } from "@/lib/store";
 import type { SubjectIconId } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useAppState } from "@/hooks/use-app-state";
 
 const ICONS: { id: SubjectIconId; label: string }[] = [
   { id: "guitar", label: "Guitar" },
@@ -136,8 +137,14 @@ export function AddItemDialog({
   onOpenChange: (o: boolean) => void;
   nodeId: string;
 }) {
+  const { state } = useAppState();
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
+  const [attachmentId, setAttachmentId] = useState("");
+  const docs = state.library.filter(
+    (d) => !d.itemId && (!d.nodeId || d.nodeId === nodeId),
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-[20px] bg-canvas sm:max-w-sm">
@@ -160,6 +167,23 @@ export function AddItemDialog({
           onChange={(e) => setNotes(e.target.value)}
           className="rounded-[14px]"
         />
+        {docs.length > 0 && (
+          <>
+            <Label>Tài liệu đính kèm (tuỳ chọn)</Label>
+            <select
+              className="h-11 w-full rounded-[14px] border border-ink/10 bg-white px-3 text-[14px]"
+              value={attachmentId}
+              onChange={(e) => setAttachmentId(e.target.value)}
+            >
+              <option value="">Không đính kèm</option>
+              {docs.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.title}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
         <p className="text-[12px] text-ink/40">
           Có thể gắn PDF, ghi chú, YouTube hoặc ảnh sau trong thư viện.
         </p>
@@ -167,9 +191,10 @@ export function AddItemDialog({
           icon="none"
           onClick={() => {
             if (!title.trim() || !nodeId) return;
-            createItem(nodeId, title, notes);
+            createItem(nodeId, title, notes, attachmentId || undefined);
             setTitle("");
             setNotes("");
+            setAttachmentId("");
             onOpenChange(false);
           }}
         >

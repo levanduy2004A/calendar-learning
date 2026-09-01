@@ -6,6 +6,7 @@ import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { CtaButton } from "@/components/cta-button";
 import { SubjectGlyph } from "@/components/subject-icon";
 import { DaypartGlyph, Pill } from "@/components/ui-bits";
+import { SubjectFilters } from "@/components/calendar/subject-filters";
 import { useAppState } from "@/hooks/use-app-state";
 import {
   addDays,
@@ -26,6 +27,7 @@ import {
   firstActionable,
   isDaypartEnabled,
   previewPlan,
+  subjectIdForItem,
 } from "@/lib/planner";
 import { ACCENTS } from "@/lib/tokens";
 import type { AccentId, DaypartId } from "@/lib/types";
@@ -58,6 +60,7 @@ export function CalendarScreen() {
           filter={filter}
           onSelectDate={(d) => setQuery({ date: d })}
           onView={() => setQuery({ view: "thang" })}
+          onFilter={(id) => setQuery({ mon: id === "all" ? null : id })}
         />
       ) : (
         <MonthView
@@ -129,7 +132,10 @@ function slotAccents(
       result[part] = "off";
       continue;
     }
-    const first = plan.slots[part][0];
+    const first = plan.slots[part].find((e) => {
+      if (filter === "all") return true;
+      return subjectIdForItem(state, e.itemId) === filter;
+    });
     if (!first) {
       result[part] = "empty";
       continue;
@@ -186,18 +192,20 @@ function WeekView({
   filter,
   onSelectDate,
   onView,
+  onFilter,
 }: {
   today: string;
   selected: string;
   filter: string;
   onSelectDate: (d: string) => void;
   onView: () => void;
+  onFilter: (id: string) => void;
 }) {
   const { state } = useAppState();
   const monday = startOfWeekMonday(selected);
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   const plan = previewPlan(state, selected);
-  const kinds = countKinds(plan, state);
+  const kinds = countKinds(plan, state, filter);
   const nowPart = currentDaypart();
   const actionable = firstActionable(plan, state, selected, today, nowPart);
   const startItem = actionable
@@ -213,6 +221,8 @@ function WeekView({
         </div>
         <ViewToggle view="tuan" onWeek={() => undefined} onMonth={onView} />
       </header>
+
+      <SubjectFilters filter={filter} onFilter={onFilter} />
 
       <div className="grid grid-cols-7 gap-1.5">
         {days.map((d) => {
@@ -239,7 +249,7 @@ function WeekView({
 
       <div className="mt-4 flex flex-1 flex-col gap-3">
         {DAYPARTS.map((part) => (
-          <WeekSlot key={part} date={selected} part={part} />
+          <WeekSlot key={part} date={selected} part={part} filter={filter} />
         ))}
       </div>
 
@@ -264,11 +274,23 @@ function WeekView({
   );
 }
 
-function WeekSlot({ date, part }: { date: string; part: DaypartId }) {
+function WeekSlot({
+  date,
+  part,
+  filter,
+}: {
+  date: string;
+  part: DaypartId;
+  filter: string;
+}) {
   const { state } = useAppState();
   const plan = previewPlan(state, date);
   const enabled = isDaypartEnabled(state, date, part);
-  const entry = plan.slots[part][0];
+  const entries = plan.slots[part].filter((e) => {
+    if (filter === "all") return true;
+    return subjectIdForItem(state, e.itemId) === filter;
+  });
+  const entry = entries[0];
   const item = entry ? state.items.find((i) => i.id === entry.itemId) : undefined;
   const node = item ? state.nodes.find((n) => n.id === item.nodeId) : undefined;
   const subject = node
@@ -311,6 +333,9 @@ function WeekSlot({ date, part }: { date: string; part: DaypartId }) {
                 <span className="text-[12px] text-ink/50">{subject.name}</span>
               </div>
               <p className="truncate text-[15px] font-semibold">{item.title}</p>
+              {entries.length > 1 && (
+                <p className="text-[12px] text-ink/45">+{entries.length - 1} đầu mục</p>
+              )}
             </div>
           </>
         ) : (
@@ -361,25 +386,7 @@ function MonthView({
         </div>
       </header>
 
-      <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
-        <Pill active={filter === "all"} onClick={() => onFilter("all")}>
-          Tất cả
-        </Pill>
-        {state.subjects.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            onClick={() => onFilter(s.id)}
-            className={cn(
-              "flex h-8 items-center gap-1.5 rounded-full bg-white px-2.5 text-[13px] font-medium ring-1",
-              filter === s.id ? "ring-ink" : "ring-ink/10",
-            )}
-          >
-            <SubjectGlyph icon={s.icon} accent={s.accent} size="sm" className="size-6 rounded-lg" />
-            {s.name}
-          </button>
-        ))}
-      </div>
+      <SubjectFilters filter={filter} onFilter={onFilter} />
 
       <div className="grid grid-cols-7 gap-y-2 text-center">
         {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((d) => (
@@ -416,7 +423,7 @@ function MonthView({
         <p className="mb-3 text-[15px] font-semibold">{formatDayFull(selected)}</p>
         <div className="space-y-3">
           {DAYPARTS.map((part) => (
-            <MonthDaypart key={part} date={selected} part={part} />
+            <MonthDaypart key={part} date={selected} part={part} filter={filter} />
           ))}
         </div>
         <div className="mt-4">
@@ -444,7 +451,10 @@ function MonthTicks({ date, filter }: { date: string; filter: string }) {
             <span key={part} className="size-[8px] rounded-full bg-[#E8E2D8]" />
           );
         }
-        const entry = plan.slots[part][0];
+        const entry = plan.slots[part].find((e) => {
+          if (filter === "all") return true;
+          return subjectIdForItem(state, e.itemId) === filter;
+        });
         if (!entry) {
           return (
             <span key={part} className="size-[8px] rounded-full bg-[#E8E2D8]" />
@@ -453,11 +463,6 @@ function MonthTicks({ date, filter }: { date: string; filter: string }) {
         const item = state.items.find((i) => i.id === entry.itemId);
         const node = item && state.nodes.find((n) => n.id === item.nodeId);
         const subject = node && state.subjects.find((s) => s.id === node.subjectId);
-        if (filter !== "all" && subject?.id !== filter) {
-          return (
-            <span key={part} className="size-[8px] rounded-full bg-[#E8E2D8]" />
-          );
-        }
         const color = subject ? ACCENTS[subject.accent].tick : "#E8E2D8";
         const checked = done.has(entry.itemId);
         return (
@@ -474,11 +479,22 @@ function MonthTicks({ date, filter }: { date: string; filter: string }) {
   );
 }
 
-function MonthDaypart({ date, part }: { date: string; part: DaypartId }) {
+function MonthDaypart({
+  date,
+  part,
+  filter,
+}: {
+  date: string;
+  part: DaypartId;
+  filter: string;
+}) {
   const { state } = useAppState();
   const plan = previewPlan(state, date);
   const enabled = isDaypartEnabled(state, date, part);
-  const entries = plan.slots[part];
+  const entries = plan.slots[part].filter((e) => {
+    if (filter === "all") return true;
+    return subjectIdForItem(state, e.itemId) === filter;
+  });
   return (
     <div>
       <p className="mb-1.5 text-[12px] font-semibold text-ink/45">

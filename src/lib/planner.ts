@@ -403,9 +403,19 @@ export function nextInSlot(
   return null;
 }
 
+export function subjectIdForItem(
+  state: AppState,
+  itemId: string,
+): string | undefined {
+  const item = state.items.find((i) => i.id === itemId);
+  if (!item) return undefined;
+  return state.nodes.find((n) => n.id === item.nodeId)?.subjectId;
+}
+
 export function countKinds(
   plan: DayPlan,
   state: AppState,
+  filter: string = "all",
 ): { review: number; learn: number } {
   let review = 0;
   let learn = 0;
@@ -413,6 +423,7 @@ export function countKinds(
   for (const part of DAYPARTS) {
     for (const e of plan.slots[part]) {
       if (done.has(e.itemId)) continue;
+      if (filter !== "all" && subjectIdForItem(state, e.itemId) !== filter) continue;
       if (e.kind === "review") review += 1;
       else learn += 1;
     }

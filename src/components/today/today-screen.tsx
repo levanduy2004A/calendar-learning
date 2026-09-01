@@ -53,8 +53,11 @@ export function TodayScreen() {
         <div>
           <p className="text-[13px] font-medium text-ink/45">{weekdayLong(date)}</p>
           <h1 className="font-heading text-[34px] leading-tight font-bold tracking-tight">
-            {isToday ? "Hôm nay" : formatDayFull(date).split(" · ")[1]}
+            {isToday ? "Hôm nay" : weekdayLong(date)}
           </h1>
+          {!isToday && (
+            <p className="text-[14px] text-ink/45">{formatDayFull(date).split(" · ")[1]}</p>
+          )}
         </div>
         <div className="mt-2 flex gap-1.5">
           {DAYPARTS.map((part) => {

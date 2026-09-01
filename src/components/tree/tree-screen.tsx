@@ -58,13 +58,12 @@ export function TreeHome({ subjectId }: { subjectId?: string }) {
     <div className="flex min-h-full flex-col px-5 pb-6 pt-5">
       <div className="mb-4 flex items-center justify-between gap-2">
         <h1 className="font-heading text-[28px] font-bold">Cây kỹ năng</h1>
-        <button
-          type="button"
-          onClick={() => setLibraryOpen(true)}
+        <Link
+          href="/thu-vien"
           className="text-[13px] font-semibold text-ink/55 underline-offset-2 hover:underline"
         >
           Thư viện
-        </button>
+        </Link>
       </div>
 
       <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
@@ -343,13 +342,9 @@ export function SubjectTreePage({ subjectId }: { subjectId: string }) {
         >
           <ChevronLeft className="size-6" />
         </Link>
-        <button
-          type="button"
-          onClick={() => setLibraryOpen(true)}
-          className="ml-auto text-[13px] font-semibold text-ink/55"
-        >
+        <Link href="/thu-vien" className="ml-auto text-[13px] font-semibold text-ink/55">
           Thêm tài liệu
-        </button>
+        </Link>
       </div>
       {nodes.length === 0 ? (
         <EmptyTree

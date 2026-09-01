@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { CtaButton } from "@/components/cta-button";
+import { LibraryDocViewer } from "@/components/library/library-doc-viewer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +26,7 @@ import { useAppState } from "@/hooks/use-app-state";
 import { orderedNodes } from "@/lib/planner";
 import { removeLibraryDoc, saveLibraryDoc, saveLibraryFile } from "@/lib/store";
 import { parseYouTubeId } from "@/lib/youtube";
-import type { DocType } from "@/lib/types";
+import type { DocType, LibraryDoc } from "@/lib/types";
 
 export function LibrarySheet({
   open,
@@ -48,6 +49,7 @@ export function LibrarySheet({
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [viewDoc, setViewDoc] = useState<LibraryDoc | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const nodes = subjectId ? orderedNodes(state.nodes, subjectId) : [];
@@ -308,9 +310,13 @@ export function LibrarySheet({
               {state.library.map((d) => (
                 <li
                   key={d.id}
-                  className="flex items-center justify-between rounded-[16px] bg-white px-3 py-2 text-[13px]"
+                  className="flex items-center justify-between gap-2 rounded-[16px] bg-white px-3 py-2 text-[13px]"
                 >
-                  <span className="truncate">
+                  <button
+                    type="button"
+                    onClick={() => setViewDoc(d)}
+                    className="min-w-0 flex-1 truncate text-left"
+                  >
                     {d.title}
                     <span className="ml-2 text-ink/40">
                       {d.type === "pdf"
@@ -321,7 +327,7 @@ export function LibrarySheet({
                             ? "YouTube"
                             : "Ảnh"}
                     </span>
-                  </span>
+                  </button>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -335,6 +341,11 @@ export function LibrarySheet({
           </div>
         )}
       </SheetContent>
+      <LibraryDocViewer
+        doc={viewDoc}
+        open={Boolean(viewDoc)}
+        onOpenChange={(o) => !o && setViewDoc(null)}
+      />
     </Sheet>
   );
 }
