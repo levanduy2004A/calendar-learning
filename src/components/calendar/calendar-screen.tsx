@@ -157,7 +157,7 @@ function WeekView({
 
       <SubjectFilters filter={filter} onFilter={onFilter} />
 
-      <div className="grid grid-cols-7 gap-1.5">
+      <div className="-mx-0.5 flex flex-wrap justify-center gap-2">
         {days.map((d) => {
           const sel = d === selected;
           const dots = subjectDotsOnDate(state, d).filter(
@@ -169,16 +169,16 @@ function WeekView({
               type="button"
               onClick={() => onSelectDate(d)}
               className={cn(
-                "flex flex-col items-center gap-1.5 rounded-[16px] py-2",
+                "flex w-[4.5rem] shrink-0 flex-col items-center gap-1.5 rounded-[16px] px-1 py-2.5",
                 sel ? "bg-white ring-1 ring-ink" : "bg-white/60",
               )}
             >
               <span className="text-[12px] font-semibold">{weekdayShort(d)}</span>
-              <div className="flex min-h-[10px] gap-[3px]">
+              <div className="flex min-h-[10px] max-w-full flex-wrap justify-center gap-1 px-0.5">
                 {dots.map((s) => (
                   <span
                     key={s.id}
-                    className="size-[7px] rounded-full"
+                    className="size-2 shrink-0 rounded-full"
                     style={{ background: ACCENTS[s.accent].tick }}
                   />
                 ))}
@@ -225,7 +225,7 @@ function DaypartStatusRow({ date, filter }: { date: string; filter: string }) {
   const parts: DaypartId[] = ["sang", "chieu", "toi"];
 
   return (
-    <div className="flex gap-1">
+    <div className="flex max-w-full flex-wrap justify-center gap-x-1.5 gap-y-1">
       {parts.map((part, i) => {
         const enabled = isDaypartEnabled(state, date, part);
         const entries = plan.slots[part].filter((e) => {
@@ -235,11 +235,11 @@ function DaypartStatusRow({ date, filter }: { date: string; filter: string }) {
         const allDone =
           entries.length > 0 && entries.every((e) => done.has(e.itemId));
         return (
-          <div key={part} className="flex flex-col items-center gap-0.5">
+          <div key={part} className="flex shrink-0 flex-col items-center gap-1">
             <span className="text-[9px] font-medium text-ink/35">{labels[i]}</span>
             <span
               className={cn(
-                "flex size-4 items-center justify-center rounded-full text-[8px]",
+                "flex size-5 shrink-0 items-center justify-center rounded-full text-[8px]",
                 !enabled && "bg-ink/5",
                 enabled && entries.length === 0 && "ring-1 ring-ink/15",
                 enabled && entries.length > 0 && !allDone && "bg-ink/10",
@@ -365,7 +365,7 @@ function MonthView({
 
       <SubjectFilters filter={filter} onFilter={onFilter} />
 
-      <div className="grid grid-cols-7 gap-y-2 text-center">
+      <div className="grid grid-cols-7 gap-x-1 gap-y-3 text-center">
         {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((d) => (
           <div key={d} className="text-[11px] font-medium text-ink/40">
             {d}
@@ -377,11 +377,11 @@ function MonthView({
               key={d}
               type="button"
               onClick={() => onSelectDate(d)}
-              className="flex flex-col items-center gap-1 py-1"
+              className="flex min-h-11 flex-col items-center justify-center gap-1 py-1"
             >
               <span
                 className={cn(
-                  "flex size-8 items-center justify-center rounded-full text-[14px] font-medium",
+                  "flex size-10 shrink-0 items-center justify-center rounded-full text-[14px] font-medium",
                   d === selected && "ring-1 ring-ink",
                   d === today && d !== selected && "font-bold",
                 )}
@@ -426,11 +426,11 @@ function MonthDots({
   );
   if (dots.length === 0) return <span className="h-[7px]" />;
   return (
-    <div className="flex gap-[2px]">
+    <div className="flex max-w-full flex-wrap justify-center gap-1">
       {dots.slice(0, 3).map((s) => (
         <span
           key={s.id}
-          className="size-[6px] rounded-full"
+          className="size-2 shrink-0 rounded-full"
           style={{ background: ACCENTS[s.accent].tick }}
         />
       ))}

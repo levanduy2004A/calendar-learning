@@ -15,7 +15,7 @@ export function SubjectFilters({
   const { state } = useAppState();
 
   return (
-    <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+    <div className="mb-3 flex flex-wrap gap-2">
       <Pill active={filter === "all"} onClick={() => onFilter("all")}>
         Tất cả
       </Pill>

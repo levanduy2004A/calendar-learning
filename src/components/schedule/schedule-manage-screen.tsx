@@ -69,14 +69,17 @@ export function ScheduleManageScreen({ subjectId }: { subjectId: string }) {
               </p>
             </div>
             {schedule.mode === "recurrence" && schedule.pattern === "weekdays" && (
-              <div className="mt-4 flex justify-between px-2">
+              <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-3 px-1">
                 {WEEKDAY_LABELS.map((label, idx) => (
-                  <div key={label} className="flex flex-col items-center gap-1.5">
+                  <div
+                    key={label}
+                    className="flex w-10 shrink-0 flex-col items-center gap-2"
+                  >
                     <span className="text-[11px] font-medium text-ink/40">{label}</span>
                     <span
                       className={cn(
-                        "size-3 rounded-full",
-                        weekdayActive.has(idx) ? "bg-ink" : "ring-1 ring-ink/20",
+                        "size-4 shrink-0 rounded-full",
+                        weekdayActive.has(idx) ? "bg-ink" : "ring-1 ring-ink/25",
                       )}
                     />
                   </div>

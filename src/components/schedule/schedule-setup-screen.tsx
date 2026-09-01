@@ -39,20 +39,25 @@ function Chip({
   active,
   children,
   onClick,
+  round,
 }: {
   active?: boolean;
   children: React.ReactNode;
   onClick?: () => void;
+  round?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-full px-4 py-2 text-[14px] font-semibold ring-1 transition",
+        "shrink-0 font-semibold ring-1 transition",
+        round
+          ? "flex size-10 items-center justify-center rounded-full text-[13px]"
+          : "rounded-full px-4 py-2.5 text-[14px]",
         active
           ? "bg-ink text-white ring-ink"
-          : "bg-white text-ink ring-ink/12",
+          : "bg-white text-ink ring-ink/20",
       )}
     >
       {children}
@@ -217,7 +222,7 @@ export function ScheduleSetupScreen({ subjectId }: { subjectId: string }) {
         <div className="mt-6 space-y-6">
           <section>
             <h2 className="mb-3 text-[15px] font-semibold">Lặp lại</h2>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2.5">
               {PATTERNS.map((p) => (
                 <Chip
                   key={p.id}
@@ -233,10 +238,11 @@ export function ScheduleSetupScreen({ subjectId }: { subjectId: string }) {
           {pattern === "weekdays" && (
             <section>
               <h2 className="mb-3 text-[15px] font-semibold">Khi chọn &quot;Các thứ&quot;</h2>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2.5">
                 {WEEKDAY_LABELS.map((label, idx) => (
                   <Chip
                     key={label}
+                    round
                     active={weekdays.includes(idx)}
                     onClick={() => toggleWeekday(idx)}
                   >
@@ -254,7 +260,7 @@ export function ScheduleSetupScreen({ subjectId }: { subjectId: string }) {
 
           <section>
             <h2 className="mb-3 text-[15px] font-semibold">Phạm vi</h2>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2.5">
               {RANGES.map((r) => (
                 <Chip
                   key={r.id}
@@ -314,7 +320,7 @@ export function ScheduleSetupScreen({ subjectId }: { subjectId: string }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-7 gap-y-2 text-center">
+          <div className="grid grid-cols-7 gap-x-1 gap-y-3 text-center">
             {WEEKDAY_LABELS.map((d) => (
               <div key={d} className="text-[11px] font-medium text-ink/40">
                 {d}
@@ -326,11 +332,11 @@ export function ScheduleSetupScreen({ subjectId }: { subjectId: string }) {
                   key={d}
                   type="button"
                   onClick={() => toggleManualDate(d)}
-                  className="flex flex-col items-center py-1"
+                  className="flex min-h-11 flex-col items-center justify-center py-1"
                 >
                   <span
                     className={cn(
-                      "flex size-9 items-center justify-center rounded-full text-[14px] font-medium",
+                      "flex size-10 shrink-0 items-center justify-center rounded-full text-[14px] font-medium",
                       manualDates.includes(d) && "bg-ink text-white",
                     )}
                   >
@@ -346,7 +352,7 @@ export function ScheduleSetupScreen({ subjectId }: { subjectId: string }) {
           <p className="text-[14px] text-ink/50">Bấm ngày để gán. Không lặp.</p>
 
           {sortedManual.length > 0 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2.5">
               {sortedManual.map((d) => {
                 const { d: day, m: mon } = parseISODate(d);
                 return (
@@ -354,7 +360,7 @@ export function ScheduleSetupScreen({ subjectId }: { subjectId: string }) {
                     key={d}
                     type="button"
                     onClick={() => toggleManualDate(d)}
-                    className="flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-[13px] font-semibold ring-1 ring-ink/12"
+                    className="flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-white px-3.5 text-[13px] font-semibold ring-1 ring-ink/20"
                   >
                     {day}/{mon}
                     <span className="text-ink/40">×</span>
