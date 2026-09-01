@@ -15,14 +15,14 @@ import {
   hasAssignedSubjects,
   hasExpiredSchedulesOnDate,
   isDaypartEnabled,
+  isDaypartSlotComplete,
   previewPlan,
 } from "@/lib/planner";
 import { expiredSubjectsOnDate } from "@/lib/schedules";
 import { resetEmpty, resetToDemo, toggleDaypart } from "@/lib/store";
-import { ACCENTS } from "@/lib/tokens";
+import { ACCENTS, TOKENS } from "@/lib/tokens";
 import type { DaypartId, PlannedEntry } from "@/lib/types";
 import { DAYPART_LABEL, DAYPARTS } from "@/lib/types";
-import { cn } from "@/lib/utils";
 
 function entryContext(state: ReturnType<typeof useAppState>["state"], entry: PlannedEntry) {
   const item = state.items.find((i) => i.id === entry.itemId);
@@ -44,7 +44,6 @@ export function TodayScreen() {
   const assigned = hasAssignedSubjects(state, date);
   const expired = hasExpiredSchedulesOnDate(state, date);
   const plan = previewPlan(state, date);
-  const done = completedIdsOn(state.completions, date);
   const isToday = date === today;
   const isFuture = date > today;
   const actionable = assigned
@@ -131,18 +130,14 @@ export function TodayScreen() {
         <div className="mt-2 flex gap-1.5">
           {DAYPARTS.map((part) => {
             const enabled = isDaypartEnabled(state, date, part);
-            const slot = plan.slots[part];
-            const allDone =
-              enabled && slot.length > 0 && slot.every((e) => done.has(e.itemId));
+            const allDone = isDaypartSlotComplete(state, plan, date, part);
             const active = isToday && enabled && part === nowPart;
             return (
               <Pill
                 key={part}
                 active={active}
                 muted={!enabled}
-                className={cn(
-                  allDone && !active && "ring-[#3F8F5A]/40 text-[#2D6A3E]",
-                )}
+                done={allDone}
                 onClick={() => toggleDaypart(date, part)}
               >
                 {DAYPART_LABEL[part]}
@@ -214,7 +209,7 @@ function DaypartSection({
   const enabled = isDaypartEnabled(state, date, part);
   const done = completedIdsOn(state.completions, date);
   const slot = plan.slots[part];
-  const allDone = slot.length > 0 && slot.every((e) => done.has(e.itemId));
+  const allDone = isDaypartSlotComplete(state, plan, date, part);
   const isCurrent = isToday && enabled && part === nowPart;
   const tone = !enabled
     ? "off"
@@ -284,7 +279,10 @@ function DaypartSection({
                     </p>
                   </div>
                   {complete ? (
-                    <span className="flex size-7 items-center justify-center rounded-full bg-[#3F8F5A] text-white">
+                    <span
+                      className="flex size-7 items-center justify-center rounded-full text-white"
+                      style={{ backgroundColor: TOKENS.successGreen }}
+                    >
                       <Check className="size-4" strokeWidth={2.5} />
                     </span>
                   ) : (

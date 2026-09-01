@@ -1,7 +1,8 @@
 "use client";
 
-import { Moon, Sun } from "lucide-react";
+import { Check, Moon, Sun } from "lucide-react";
 import Link from "next/link";
+import { TOKENS } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 import type { DaypartId } from "@/lib/types";
 
@@ -14,7 +15,7 @@ export function DaypartGlyph({
 }) {
   const color =
     tone === "done"
-      ? "#3F8F5A"
+      ? TOKENS.successGreen
       : tone === "active"
         ? "#1A1814"
         : tone === "off"
@@ -54,12 +55,14 @@ export function Pill({
   children,
   active,
   muted,
+  done,
   onClick,
   className,
 }: {
   children: React.ReactNode;
   active?: boolean;
   muted?: boolean;
+  done?: boolean;
   onClick?: () => void;
   className?: string;
 }) {
@@ -68,13 +71,18 @@ export function Pill({
       type="button"
       onClick={onClick}
       className={cn(
-        "h-8 rounded-full px-3 text-[13px] font-medium transition",
-        active && "bg-ink text-white",
-        !active && !muted && "bg-white text-ink ring-1 ring-ink/15",
-        muted && "bg-transparent text-ink/35",
+        "inline-flex h-8 items-center gap-1 rounded-full px-3 text-[13px] font-medium transition",
+        done && "text-white",
+        active && !done && "bg-ink text-white",
+        !active && !muted && !done && "bg-white text-ink ring-1 ring-ink/15",
+        muted && !done && "bg-transparent text-ink/35",
         className,
       )}
+      style={
+        done ? { backgroundColor: TOKENS.successGreen } : undefined
+      }
     >
+      {done && <Check className="size-3 shrink-0" strokeWidth={3} />}
       {children}
     </button>
   );

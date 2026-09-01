@@ -24,12 +24,13 @@ import {
   completedIdsOn,
   firstActionable,
   isDaypartEnabled,
+  isDaypartSlotComplete,
   previewPlan,
   subjectIdForItem,
   subjectNamesOnDate,
 } from "@/lib/planner";
 import { subjectDotsOnDate } from "@/lib/schedules";
-import { ACCENTS } from "@/lib/tokens";
+import { ACCENTS, TOKENS } from "@/lib/tokens";
 import type { DaypartId } from "@/lib/types";
 import { DAYPART_LABEL, DAYPARTS } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -220,7 +221,6 @@ function WeekView({
 function DaypartStatusRow({ date, filter }: { date: string; filter: string }) {
   const { state } = useAppState();
   const plan = previewPlan(state, date);
-  const done = completedIdsOn(state.completions, date);
   const labels = ["S", "C", "T"] as const;
   const parts: DaypartId[] = ["sang", "chieu", "toi"];
 
@@ -232,8 +232,16 @@ function DaypartStatusRow({ date, filter }: { date: string; filter: string }) {
           if (filter === "all") return true;
           return subjectIdForItem(state, e.itemId) === filter;
         });
-        const allDone =
-          entries.length > 0 && entries.every((e) => done.has(e.itemId));
+        const allDone = isDaypartSlotComplete(
+          state,
+          plan,
+          date,
+          part,
+          (e) => {
+            if (filter === "all") return true;
+            return subjectIdForItem(state, e.itemId) === filter;
+          },
+        );
         return (
           <div key={part} className="flex shrink-0 flex-col items-center gap-1">
             <span className="text-[9px] font-medium text-ink/35">{labels[i]}</span>
@@ -243,8 +251,9 @@ function DaypartStatusRow({ date, filter }: { date: string; filter: string }) {
                 !enabled && "bg-ink/5",
                 enabled && entries.length === 0 && "ring-1 ring-ink/15",
                 enabled && entries.length > 0 && !allDone && "bg-ink/10",
-                allDone && "bg-[#3F8F5A] text-white",
+                allDone && "text-white",
               )}
+              style={allDone ? { backgroundColor: TOKENS.successGreen } : undefined}
             >
               {allDone && <Check className="size-2.5" strokeWidth={3} />}
             </span>
@@ -272,11 +281,22 @@ function WeekDaypartDetail({
     if (filter === "all") return true;
     return subjectIdForItem(state, e.itemId) === filter;
   });
+  const allDone = isDaypartSlotComplete(
+    state,
+    plan,
+    date,
+    part,
+    (e) => {
+      if (filter === "all") return true;
+      return subjectIdForItem(state, e.itemId) === filter;
+    },
+  );
+  const glyphTone = !enabled ? "off" : allDone ? "done" : "active";
 
   return (
     <section>
       <div className="mb-2 flex items-center gap-2">
-        <DaypartGlyph part={part} tone={enabled ? "active" : "off"} />
+        <DaypartGlyph part={part} tone={glyphTone} />
         <h3 className="text-[15px] font-semibold">{DAYPART_LABEL[part]}</h3>
       </div>
       {!enabled || entries.length === 0 ? (

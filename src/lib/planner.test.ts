@@ -4,6 +4,7 @@ import {
   candidateItemsForSubject,
   hasAssignedSubjects,
   hasExpiredSchedulesOnDate,
+  isDaypartSlotComplete,
   isNodeComplete,
   previewPlan,
   unlockedNodeIds,
@@ -93,6 +94,41 @@ describe("assigned-subject planning", () => {
       e.itemId.startsWith("item_g"),
     );
     expect(guitarInPlan).toBe(true);
+  });
+});
+
+describe("daypart completion", () => {
+  it("marks a slot complete only when enabled, planned, and all items done", () => {
+    const date = "2026-09-01";
+    const s = createSeedState(atHour(date, 9));
+    const plan = buildDayPlan(s, date);
+    expect(plan.slots.sang.length).toBeGreaterThan(0);
+    expect(isDaypartSlotComplete(s, plan, date, "sang")).toBe(false);
+
+    const sangIds = plan.slots.sang.map((e) => e.itemId);
+    const completions = sangIds.map((itemId) => ({
+      itemId,
+      date,
+      daypart: "sang" as const,
+    }));
+    const doneState = { ...s, completions };
+    expect(isDaypartSlotComplete(doneState, plan, date, "sang")).toBe(true);
+    expect(isDaypartSlotComplete(doneState, plan, date, "chieu")).toBe(false);
+  });
+
+  it("does not mark disabled or empty dayparts complete", () => {
+    const date = "2026-09-01";
+    const s = createSeedState(atHour(date, 9));
+    const plan = buildDayPlan(s, date);
+    const disabled = {
+      ...s,
+      daypartEnabledByDate: { [date]: { sang: false } },
+    };
+    expect(isDaypartSlotComplete(disabled, plan, date, "sang")).toBe(false);
+
+    const emptyDate = "2026-09-06";
+    const emptyPlan = previewPlan(s, emptyDate, atHour(emptyDate, 9));
+    expect(isDaypartSlotComplete(s, emptyPlan, emptyDate, "sang")).toBe(false);
   });
 });
 

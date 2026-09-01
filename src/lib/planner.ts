@@ -154,6 +154,21 @@ export function completedIdsOn(completions: Completion[], date: string): Set<str
   return new Set(completions.filter((c) => c.date === date).map((c) => c.itemId));
 }
 
+/** True when daypart is enabled, has planned items, and every item is completed. */
+export function isDaypartSlotComplete(
+  state: Pick<AppState, "completions" | "daypartEnabled" | "daypartEnabledByDate">,
+  plan: DayPlan,
+  date: string,
+  part: DaypartId,
+  entryFilter: (entry: PlannedEntry) => boolean = () => true,
+): boolean {
+  if (!isDaypartEnabled(state, date, part)) return false;
+  const entries = plan.slots[part].filter(entryFilter);
+  if (entries.length === 0) return false;
+  const done = completedIdsOn(state.completions, date);
+  return entries.every((e) => done.has(e.itemId));
+}
+
 export function firstActionable(
   plan: DayPlan,
   state: AppState,

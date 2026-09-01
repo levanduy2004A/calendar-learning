@@ -7,6 +7,9 @@ export const TOKENS = {
   line: "#E4DFD6",
   white: "#FFFFFF",
   radius: 20,
+  /** Success / completion check — guitar-green accent tick, not primary CTA. */
+  successGreen: "#3F8F5A",
+  successGreenInk: "#2D6A3E",
 };
 
 export const ACCENTS: Record<
