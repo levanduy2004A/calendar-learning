@@ -1,4 +1,3 @@
-import { vnToday } from "./dates";
 import { expiredSubjectsOnDate, subjectsOnDate } from "./schedules";
 import type {
   AppState,
