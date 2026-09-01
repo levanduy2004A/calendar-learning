@@ -23,6 +23,7 @@ import {
 import {
   completedIdsOn,
   firstActionable,
+  isDayFullyComplete,
   isDaypartEnabled,
   isDaypartSlotComplete,
   previewPlan,
@@ -170,7 +171,7 @@ function WeekView({
               type="button"
               onClick={() => onSelectDate(d)}
               className={cn(
-                "flex w-[4.5rem] shrink-0 flex-col items-center gap-1.5 rounded-[16px] px-1 py-2.5",
+                "flex w-[5.75rem] shrink-0 flex-col items-center gap-1.5 rounded-[16px] px-1 py-2.5",
                 sel ? "bg-white ring-1 ring-ink" : "bg-white/60",
               )}
             >
@@ -218,44 +219,50 @@ function WeekView({
   );
 }
 
+function daypartEntryFilter(
+  state: ReturnType<typeof useAppState>["state"],
+  filter: string,
+) {
+  return (e: { itemId: string }) => {
+    if (filter === "all") return true;
+    return subjectIdForItem(state, e.itemId) === filter;
+  };
+}
+
 function DaypartStatusRow({ date, filter }: { date: string; filter: string }) {
   const { state } = useAppState();
   const plan = previewPlan(state, date);
+  const entryFilter = daypartEntryFilter(state, filter);
   const labels = ["S", "C", "T"] as const;
   const parts: DaypartId[] = ["sang", "chieu", "toi"];
 
   return (
-    <div className="flex max-w-full flex-wrap justify-center gap-x-1.5 gap-y-1">
+    <div className="flex max-w-full flex-wrap justify-center gap-2">
       {parts.map((part, i) => {
         const enabled = isDaypartEnabled(state, date, part);
-        const entries = plan.slots[part].filter((e) => {
-          if (filter === "all") return true;
-          return subjectIdForItem(state, e.itemId) === filter;
-        });
-        const allDone = isDaypartSlotComplete(
-          state,
-          plan,
-          date,
-          part,
-          (e) => {
-            if (filter === "all") return true;
-            return subjectIdForItem(state, e.itemId) === filter;
-          },
-        );
+        const entries = plan.slots[part].filter(entryFilter);
+        const allDone = isDaypartSlotComplete(state, plan, date, part, entryFilter);
         return (
-          <div key={part} className="flex shrink-0 flex-col items-center gap-1">
-            <span className="text-[9px] font-medium text-ink/35">{labels[i]}</span>
+          <div key={part} className="flex shrink-0 flex-col items-center gap-0.5">
+            <span className="text-[10px] font-semibold text-ink/40">{labels[i]}</span>
             <span
               className={cn(
-                "flex size-5 shrink-0 items-center justify-center rounded-full text-[8px]",
+                "flex size-8 shrink-0 items-center justify-center rounded-full",
                 !enabled && "bg-ink/5",
-                enabled && entries.length === 0 && "ring-1 ring-ink/15",
-                enabled && entries.length > 0 && !allDone && "bg-ink/10",
-                allDone && "text-white",
+                enabled && entries.length === 0 && "ring-2 ring-ink/15",
+                enabled && entries.length > 0 && !allDone && "bg-ink/12",
+                allDone && "text-white shadow-sm",
               )}
               style={allDone ? { backgroundColor: TOKENS.successGreen } : undefined}
+              aria-label={
+                allDone
+                  ? `${DAYPART_LABEL[part]} đã xong`
+                  : enabled && entries.length > 0
+                    ? `${DAYPART_LABEL[part]} chưa xong`
+                    : `${DAYPART_LABEL[part]} không học`
+              }
             >
-              {allDone && <Check className="size-2.5" strokeWidth={3} />}
+              {allDone && <Check className="size-4" strokeWidth={3} />}
             </span>
           </div>
         );
@@ -277,19 +284,13 @@ function WeekDaypartDetail({
   const plan = previewPlan(state, date);
   const enabled = isDaypartEnabled(state, date, part);
   const done = completedIdsOn(state.completions, date);
-  const entries = plan.slots[part].filter((e) => {
-    if (filter === "all") return true;
-    return subjectIdForItem(state, e.itemId) === filter;
-  });
+  const entries = plan.slots[part].filter(daypartEntryFilter(state, filter));
   const allDone = isDaypartSlotComplete(
     state,
     plan,
     date,
     part,
-    (e) => {
-      if (filter === "all") return true;
-      return subjectIdForItem(state, e.itemId) === filter;
-    },
+    daypartEntryFilter(state, filter),
   );
   const glyphTone = !enabled ? "off" : allDone ? "done" : "active";
 
@@ -393,23 +394,14 @@ function MonthView({
         ))}
         {cells.map((d, i) =>
           d ? (
-            <button
+            <MonthDayCell
               key={d}
-              type="button"
-              onClick={() => onSelectDate(d)}
-              className="flex min-h-11 flex-col items-center justify-center gap-1 py-1"
-            >
-              <span
-                className={cn(
-                  "flex size-10 shrink-0 items-center justify-center rounded-full text-[14px] font-medium",
-                  d === selected && "ring-1 ring-ink",
-                  d === today && d !== selected && "font-bold",
-                )}
-              >
-                {parseISODate(d).d}
-              </span>
-              <MonthDots date={d} filter={filter} />
-            </button>
+              date={d}
+              today={today}
+              selected={selected}
+              filter={filter}
+              onSelect={() => onSelectDate(d)}
+            />
           ) : (
             <div key={`e-${i}`} />
           ),
@@ -430,6 +422,49 @@ function MonthView({
         </div>
       </div>
     </>
+  );
+}
+
+function MonthDayCell({
+  date,
+  today,
+  selected,
+  filter,
+  onSelect,
+}: {
+  date: string;
+  today: string;
+  selected: string;
+  filter: string;
+  onSelect: () => void;
+}) {
+  const { state } = useAppState();
+  const plan = previewPlan(state, date);
+  const entryFilter = daypartEntryFilter(state, filter);
+  const fullyDone = isDayFullyComplete(state, plan, date, entryFilter);
+  const dayNum = parseISODate(date).d;
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className="flex min-h-11 flex-col items-center justify-center gap-1 py-1"
+    >
+      <span
+        className={cn(
+          "flex size-10 shrink-0 items-center justify-center rounded-full text-[14px] font-medium",
+          date === selected && !fullyDone && "ring-1 ring-ink",
+          date === selected && fullyDone && "ring-2 ring-ink/25",
+          date === today && date !== selected && !fullyDone && "font-bold",
+          fullyDone && "text-white shadow-sm",
+        )}
+        style={fullyDone ? { backgroundColor: TOKENS.successGreen } : undefined}
+        aria-label={fullyDone ? `Ngày ${dayNum} đã hoàn thành` : undefined}
+      >
+        {fullyDone ? <Check className="size-5" strokeWidth={3} /> : dayNum}
+      </span>
+      <MonthDots date={date} filter={filter} />
+    </button>
   );
 }
 

@@ -4,12 +4,14 @@ import {
   candidateItemsForSubject,
   hasAssignedSubjects,
   hasExpiredSchedulesOnDate,
+  isDayFullyComplete,
   isDaypartSlotComplete,
   isNodeComplete,
   previewPlan,
   unlockedNodeIds,
 } from "./planner";
 import { createSeedState } from "./seed";
+import { DAYPARTS } from "./types";
 
 function atHour(isoDate: string, hour: number): Date {
   return new Date(`${isoDate}T${String(hour).padStart(2, "0")}:00:00+07:00`);
@@ -129,6 +131,23 @@ describe("daypart completion", () => {
     const emptyDate = "2026-09-06";
     const emptyPlan = previewPlan(s, emptyDate, atHour(emptyDate, 9));
     expect(isDaypartSlotComplete(s, emptyPlan, emptyDate, "sang")).toBe(false);
+  });
+
+  it("marks a day complete only when every work daypart is done", () => {
+    const date = "2026-09-01";
+    const s = createSeedState(atHour(date, 9));
+    const plan = buildDayPlan(s, date);
+    expect(isDayFullyComplete(s, plan, date)).toBe(false);
+
+    const allIds = DAYPARTS.flatMap((part) => plan.slots[part].map((e) => e.itemId));
+    const uniqueIds = [...new Set(allIds)];
+    const completions = uniqueIds.map((itemId) => ({
+      itemId,
+      date,
+      daypart: "sang" as const,
+    }));
+    const doneState = { ...s, completions };
+    expect(isDayFullyComplete(doneState, plan, date)).toBe(true);
   });
 });
 

@@ -169,6 +169,23 @@ export function isDaypartSlotComplete(
   return entries.every((e) => done.has(e.itemId));
 }
 
+/** True when every enabled daypart that has planned work is fully complete. */
+export function isDayFullyComplete(
+  state: Pick<AppState, "completions" | "daypartEnabled" | "daypartEnabledByDate">,
+  plan: DayPlan,
+  date: string,
+  entryFilter: (entry: PlannedEntry) => boolean = () => true,
+): boolean {
+  const workParts = DAYPARTS.filter((part) => {
+    if (!isDaypartEnabled(state, date, part)) return false;
+    return plan.slots[part].filter(entryFilter).length > 0;
+  });
+  if (workParts.length === 0) return false;
+  return workParts.every((part) =>
+    isDaypartSlotComplete(state, plan, date, part, entryFilter),
+  );
+}
+
 export function firstActionable(
   plan: DayPlan,
   state: AppState,
