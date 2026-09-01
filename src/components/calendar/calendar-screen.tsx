@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { CtaButton } from "@/components/cta-button";
 import { SubjectGlyph } from "@/components/subject-icon";
-import { DaypartGlyph, Pill } from "@/components/ui-bits";
+import { DaypartGlyph } from "@/components/ui-bits";
 import { SubjectFilters } from "@/components/calendar/subject-filters";
 import { useAppState } from "@/hooks/use-app-state";
 import {
@@ -364,7 +364,6 @@ function MonthView({
   onFilter: (id: string) => void;
   onShiftMonth: (dir: number) => void;
 }) {
-  const { state } = useAppState();
   const { y, m } = parseISODate(selected);
   const cells = monthGrid(y, m);
 

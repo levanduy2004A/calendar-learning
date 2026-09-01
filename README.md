@@ -23,7 +23,9 @@ Dữ liệu lưu trên máy (localStorage + IndexedDB). Làm mới trang không 
 ## Ba tab
 
 - **Hôm nay** — khung Sáng / Chiều / Tối (tắt khung = Không học). Bắt đầu luyện.
-- **Lịch** — đọc kế hoạch tự xếp (tuần mặc định, tháng tuỳ chọn). Không kéo thả sự kiện.
+- **Lịch** — đọc kế hoạch tự xếp (tuần mặc định, tháng tuỳ chọn). Lọc theo môn. Không kéo thả sự kiện.
 - **Cây kỹ năng** — tạo môn, ô, đầu mục. Ô sau khóa đến khi ô trước xong hết.
+
+**Thư viện** (`/thu-vien`): lưu PDF, ghi chú, YouTube, ảnh — mở khi học, không bẻ thành cây.
 
 Luyện tập toàn màn hình: **Xong** · **Chưa vững, hẹn ôn** · **Bỏ qua** (bỏ qua không tính đạt).
